@@ -9,9 +9,6 @@ use App\Models\Respuesta;
 
 class TriviaSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // 1. CREAMOS LOS CUESTIONARIOS PRINCIPALES
