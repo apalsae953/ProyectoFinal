@@ -34,4 +34,28 @@ class Valoracion extends Model
     {
         return $this->belongsTo(Medio::class);
     }
+
+    /**
+     * Obtener los votos (likes/dislikes) de esta valoración.
+     */
+    public function votes()
+    {
+        return $this->hasMany(ValoracionVote::class);
+    }
+
+    /**
+     * Contar likes
+     */
+    public function getLikesCountAttribute()
+    {
+        return $this->votes()->where('type', 'like')->count();
+    }
+
+    /**
+     * Contar dislikes
+     */
+    public function getDislikesCountAttribute()
+    {
+        return $this->votes()->where('type', 'dislike')->count();
+    }
 }

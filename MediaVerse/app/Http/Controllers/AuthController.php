@@ -90,4 +90,70 @@ class AuthController extends Controller
             'message' => 'Sesión cerrada correctamente'
         ], 200);
     }
+
+    /**
+     * REDIRECT TO SOCIAL PROVIDER
+     */
+    public function redirectToProvider($provider)
+    {
+        if (!in_array($provider, ['google', 'github'])) {
+            return response()->json(['success' => false, 'message' => 'Proveedor no soportado'], 400);
+        }
+
+        return \Laravel\Socialite\Facades\Socialite::driver($provider)->stateless()->redirect();
+    }
+
+    /**
+     * HANDLE PROVIDER CALLBACK
+     */
+    public function handleProviderCallback($provider)
+    {
+        try {
+            // Saltarnos la validación SSL local para evitar el 'curl error 60' en Windows (solo para desarrollo)
+            $httpClient = new \GuzzleHttp\Client(['verify' => false]);
+            $socialUser = \Laravel\Socialite\Facades\Socialite::driver($provider)
+                            ->stateless()
+                            ->setHttpClient($httpClient)
+                            ->user();
+            
+            // Buscar si el usuario ya existe por proveedor y ID
+            $user = User::where('provider', $provider)->where('provider_id', $socialUser->getId())->first();
+
+            // Si no existe con este provider_id, buscar si existe por email
+            if (!$user) {
+                $user = User::where('email', $socialUser->getEmail())->first();
+
+                if ($user) {
+                    // Actualizamos sus datos para incluir este provider
+                    $user->update([
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->getId(),
+                        'avatar' => $user->avatar ?? $socialUser->getAvatar(),
+                    ]);
+                } else {
+                    // Crear un nuevo usuario
+                    $user = User::create([
+                        'name' => $socialUser->getName() ?? $socialUser->getNickname(),
+                        'email' => $socialUser->getEmail(),
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->getId(),
+                        'avatar' => $socialUser->getAvatar(),
+                        // No password for social login
+                    ]);
+                }
+            }
+
+            // Crear el token
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            // Redirigir al frontend con el token
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            return redirect($frontendUrl . '/oauth/callback?token=' . $token);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error en login social con {$provider}: " . $e->getMessage());
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+            return redirect($frontendUrl . '/login?error=social_auth_failed');
+        }
+    }
 }

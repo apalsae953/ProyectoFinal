@@ -34,3 +34,28 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #e50914;
 }
+
+/* Efecto hover para botones "Volver" */
+.btn-volver {
+  transition: all 0.3s ease !important;
+}
+
+.btn-volver:hover {
+  transform: scale(1.1);
+  color: white !important;
+  text-shadow: 0 0 10px rgba(255,255,255,0.5);
+}
+
+/* Transiciones para el menú hamburguesa */
+.btn-hamburger {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.btn-hamburger:hover {
+  transform: scale(1.15);
+  color: #e50914 !important;
+}
+
+.hamburger-line {
+  transition: all 0.3s ease;
+}

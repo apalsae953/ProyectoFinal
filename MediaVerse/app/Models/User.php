@@ -19,16 +19,20 @@ class User extends Authenticatable
     use TwoFactorAuthenticatable;
 
     /**
-     * The attributes that are mass assignable.
+     * Atributos que se pueden asignar de forma masiva.
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'provider',
+        'provider_id',
+        'avatar',
+        'bio',
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Atributos que deben ocultarse para la serialización (API/Json).
      */
     protected $hidden = [
         'password',
@@ -38,14 +42,14 @@ class User extends Authenticatable
     ];
 
     /**
-     * The accessors to append to the model's array form.
+     * Atributos adicionales que se añaden al formato array/JSON del modelo.
      */
     protected $appends = [
         'profile_photo_url',
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Define los tipos de datos a los que se convertirán los atributos.
      */
     protected function casts(): array
     {

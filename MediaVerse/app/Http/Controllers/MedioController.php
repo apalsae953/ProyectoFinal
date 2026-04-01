@@ -27,12 +27,13 @@ class MedioController extends Controller
         // 3. Recorremos los resultados y les "pegamos" la nota media local
         foreach ($tmdbResults as &$result) {
             $medio = $mediosLocales->get($result['id']);
-            
+
             if ($medio && $medio->valoraciones->count() > 0) {
                 // Calculamos la media y la formateamos a 1 decimal
                 $promedio = $medio->valoraciones->avg('puntuacion');
                 $result['puntuacion_usuarios'] = number_format($promedio, 1);
-            } else {
+            }
+            else {
                 $result['puntuacion_usuarios'] = null; // O un guion '-'
             }
         }
@@ -73,14 +74,14 @@ class MedioController extends Controller
             return [
                 'id' => $game['id'],
                 'name' => $game['name'],
-                'background_image' => isset($game['cover']['image_id']) 
-                    ? "https://images.igdb.com/igdb/image/upload/t_720p/{$game['cover']['image_id']}.jpg" 
-                    : 'https://via.placeholder.com/500x750?text=No+Image',
-                'rating' => isset($game['rating']) ? round($game['rating'] / 20, 2) : 0,
-                'metacritic' => isset($game['aggregated_rating']) ? round($game['aggregated_rating']) : null,
+                'background_image' => isset($game['cover']['image_id'])
+                ? "https://images.igdb.com/igdb/image/upload/t_720p/{$game['cover']['image_id']}.jpg"
+                : 'https://via.placeholder.com/500x750?text=No+Image',
+                'rating' => isset($game['rating']) ? round($game['rating'] / 10, 1) : null,
+                'metacritic' => isset($game['aggregated_rating']) ? round($game['aggregated_rating'] / 10, 1) : null,
                 'released' => isset($game['first_release_date']) ? date('Y-m-d', $game['first_release_date']) : null,
                 'year' => isset($game['first_release_date']) ? date('Y', $game['first_release_date']) : 'N/A',
-                'added' => $game['total_rating_count'] ?? 0, 
+                'added' => $game['total_rating_count'] ?? 0,
                 'category_name' => $this->getCategoryName($game['category'] ?? 0),
                 'platforms' => isset($game['platforms']) ? implode(', ', array_slice(array_column($game['platforms'], 'name'), 0, 3)) : 'Varios',
             ];
@@ -120,41 +121,61 @@ class MedioController extends Controller
     {
         try {
             $token = config('services.tmdb.key');
-            $response = Http::withoutVerifying()
-                ->get('https://api.themoviedb.org/3/discover/movie', [
+            $page = $request->query('page', 1);
+            $genre = $request->query('genre');
+            $year = $request->query('year');
+            $sortBy = $request->query('sort', 'popularity.desc');
+            
+            $cacheKey = "popular_movies_{$page}_{$genre}_{$year}_{$sortBy}";
+
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($token, $page, $genre, $year, $sortBy) {
+                $params = [
                     'api_key' => $token,
                     'language' => 'es-ES',
-                    'page' => $request->query('page', 1),
-                    'primary_release_date.gte' => now()->subMonth()->format('Y-m-d'),
-                    'primary_release_date.lte' => now()->format('Y-m-d'),
-                    'sort_by' => 'popularity.desc',
-                ]);
+                    'page' => $page,
+                    'sort_by' => $sortBy,
+                ];
+                if ($genre) $params['with_genres'] = $genre;
+                if ($year) $params['primary_release_year'] = $year;
+                
+                // POPULARES: Último año si no hay filtro
+                if (!$year && !$genre) {
+                    $params['primary_release_date.gte'] = now()->subYear()->format('Y-m-d');
+                }
 
-            if ($response->failed()) {
-                // ... manejo de error ...
-                return response()->json(['success' => false, 'message' => 'Error API Cine'], $response->status());
-            }
-
-            $data = $response->json();
-            
-            // REUTILIZAMOS EL HELPER PARA LAS NOTAS LOCALES
+                $response = Http::withoutVerifying()->get('https://api.themoviedb.org/3/discover/movie', $params);
+                return $response->failed() ? null : $response->json();
+            });
+            if (!$data) return response()->json(['success' => false, 'message' => 'Error API Cine'], 500);
             $resultsWithRatings = $this->mergeWithLocalRatings($data['results']);
-
             foreach ($resultsWithRatings as &$item) {
                 $item['year'] = isset($item['release_date']) ? substr($item['release_date'], 0, 4) : 'N/A';
             }
+            return response()->json(['success' => true, 'data' => $resultsWithRatings, 'current_page' => $data['page'], 'total_pages' => min($data['total_pages'], 500)], 200);
+        } catch (\Exception $e) { return response()->json(['success' => false, 'message' => 'Error de servidor'], 500); }
+    }
 
-            return response()->json([
-                'success' => true,
-                'data' => $resultsWithRatings,
-                'current_page' => $data['page'],
-                'total_pages' => $data['total_pages'],
-            ], 200);
-
-        } catch (\Exception $e) {
-            // ... manejo de excepción ...
-            return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
-        }
+    public function getLatestMovies(Request $request)
+    {
+        try {
+            $token = config('services.tmdb.key');
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_movies_v5', 3600, function () use ($token) {
+                $params = [
+                    'api_key' => $token,
+                    'language' => 'es-ES',
+                    'sort_by' => 'popularity.desc', // Volvemos a popularidad para que sea "famoso"
+                    'primary_release_date.lte' => now()->format('Y-m-d'),
+                    'primary_release_date.gte' => now()->subDays(60)->format('Y-m-d'),
+                    'vote_count.gte' => 3, // Calidad mínima
+                ];
+                $response = Http::withoutVerifying()->get('https://api.themoviedb.org/3/discover/movie', $params);
+                return $response->failed() ? ['results' => []] : $response->json();
+            });
+            if (!$data || !isset($data['results'])) return response()->json(['success' => true, 'data' => []], 200);
+            $results = $this->mergeWithLocalRatings($data['results']);
+            foreach ($results as &$item) $item['year'] = isset($item['release_date']) ? substr($item['release_date'], 0, 4) : 'N/A';
+            return response()->json(['success' => true, 'data' => $results], 200);
+        } catch (\Exception $e) { return response()->json(['success' => false, 'message' => $e->getMessage()], 500); }
     }
 
     /**
@@ -164,52 +185,53 @@ class MedioController extends Controller
     {
         try {
             $token = config('services.tmdb.key');
-            // Fíjate que el endpoint ahora es /discover/tv
-            $response = Http::withoutVerifying()
-                ->get('https://api.themoviedb.org/3/discover/tv', [
-                    'api_key' => $token,
-                    'language' => 'es-ES',
-                    'page' => $request->query('page', 1),
-                    'first_air_date.gte' => now()->subMonth()->format('Y-m-d'),
-                    'first_air_date.lte' => now()->format('Y-m-d'),
-                    'sort_by' => 'popularity.desc',
-                ]);
-
-            if ($response->failed()) {
-                return response()->json(['success' => false, 'message' => 'Error API Series'], $response->status());
-            }
-
-            $data = $response->json();
-            
-            // Fusión con notas locales (usamos 'serie' como tipo)
-            $resultsWithRatings = $this->mergeWithLocalRatings($data['results'], 'serie');
-
-            foreach ($resultsWithRatings as &$item) {
+            $page = $request->query('page', 1);
+            $genre = $request->query('genre');
+            $year = $request->query('year');
+            $sortBy = $request->query('sort', 'popularity.desc');
+            $cacheKey = "popular_series_{$page}_{$genre}_{$year}_{$sortBy}";
+            $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($token, $page, $genre, $year, $sortBy) {
+                $params = ['api_key' => $token, 'language' => 'es-ES', 'page' => $page, 'sort_by' => $sortBy];
+                if ($genre) $params['with_genres'] = $genre;
+                if ($year) $params['first_air_date_year'] = $year;
+                if (!$year && !$genre) $params['first_air_date.gte'] = now()->subYear()->format('Y-m-d');
+                $response = Http::withoutVerifying()->get('https://api.themoviedb.org/3/discover/tv', $params);
+                return $response->failed() ? null : $response->json();
+            });
+            if (!$data) return response()->json(['success' => false, 'message' => 'Error API Series'], 500);
+            $results = $this->mergeWithLocalRatings($data['results'], 'serie');
+            foreach ($results as &$item) {
                 $item['title'] = $item['name'] ?? 'Sin título';
                 $item['year'] = isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A';
             }
+            return response()->json(['success' => true, 'data' => $results, 'current_page' => $data['page'], 'total_pages' => min($data['total_pages'], 500)], 200);
+        } catch (\Exception $e) { return response()->json(['success' => false, 'message' => 'Error de servidor'], 500); }
+    }
 
-            // Ordenamos por popularidad avanzada (pesando mucho el número de votos)
-            usort($resultsWithRatings, function($a, $b) {
-                // 1. Priorizar los que tienen póster
-                $posterA = !empty($a['poster_path']) ? 1 : 0;
-                $posterB = !empty($b['poster_path']) ? 1 : 0;
-                if ($posterA !== $posterB) return $posterB <=> $posterA;
-
-                // 2. Priorizar por popularidad real de TMDB
-                return $b['popularity'] <=> $a['popularity'];
+    public function getLatestSeries(Request $request)
+    {
+        try {
+            $token = config('services.tmdb.key');
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_series_v5', 3600, function () use ($token) {
+                $params = [
+                    'api_key' => $token,
+                    'language' => 'es-ES',
+                    'sort_by' => 'popularity.desc',
+                    'first_air_date.lte' => now()->format('Y-m-d'),
+                    'first_air_date.gte' => now()->subDays(90)->format('Y-m-d'),
+                    'vote_count.gte' => 3,
+                ];
+                $response = Http::withoutVerifying()->get('https://api.themoviedb.org/3/discover/tv', $params);
+                return $response->failed() ? ['results' => []] : $response->json();
             });
-
-            return response()->json([
-                'success' => true,
-                'data' => $resultsWithRatings,
-                'current_page' => $data['page'],
-                'total_pages' => $data['total_pages'],
-            ], 200);
-
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
-        }
+            if (!$data || !isset($data['results'])) return response()->json(['success' => true, 'data' => []], 200);
+            $results = $this->mergeWithLocalRatings($data['results'], 'serie');
+            foreach ($results as &$item) {
+                $item['title'] = $item['name'] ?? 'Sin título';
+                $item['year'] = isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A';
+            }
+            return response()->json(['success' => true, 'data' => $results], 200);
+        } catch (\Exception $e) { return response()->json(['success' => false, 'message' => $e->getMessage()], 500); }
     }
 
     /**
@@ -222,16 +244,16 @@ class MedioController extends Controller
 
         try {
             $token = config('services.tmdb.key');
-            $page = (int) $request->query('page', 1);
+            $page = (int)$request->query('page', 1);
             $limit = 20;
 
             // Hacemos 5 peticiones concurrentes a TMDB para consolidar y ordenar globalmente
-            $pool = \Illuminate\Support\Facades\Http::pool(fn ($pool) => [
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
+            $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
             ]);
 
             $allResults = [];
@@ -267,7 +289,7 @@ class MedioController extends Controller
 
                     if (!empty($allResults)) {
                         $allResults = collect($allResults)->unique('id')->values()->all();
-                        usort($allResults, function($a, $b) use ($query) {
+                        usort($allResults, function ($a, $b) use ($query) {
                             $titleA = $a['name'] ?? '';
                             $titleB = $b['name'] ?? '';
                             similar_text(strtolower($titleA), strtolower($query), $percA);
@@ -277,7 +299,7 @@ class MedioController extends Controller
                             return $scoreB <=> $scoreA;
                         });
                         $allResults = array_slice($allResults, 0, 40); // Limitar resultados 'adivinados'
-                        $realTotalPages = 1; 
+                        $realTotalPages = 1;
                     }
                 }
             }
@@ -297,11 +319,12 @@ class MedioController extends Controller
                 $item['year'] = isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A';
             }
 
-            usort($resultsWithRatings, function($a, $b) use ($query) {
+            usort($resultsWithRatings, function ($a, $b) use ($query) {
                 // 1. Prioridad máxima: Póster
                 $posterA = !empty($a['poster_path']) ? 1 : 0;
                 $posterB = !empty($b['poster_path']) ? 1 : 0;
-                if ($posterA !== $posterB) return $posterB <=> $posterA;
+                if ($posterA !== $posterB)
+                    return $posterB <=> $posterA;
 
                 // 2. Bonus por coincidencia de título
                 $titleA = strtolower($a['name'] ?? '');
@@ -311,17 +334,22 @@ class MedioController extends Controller
                 $scoreA = 0;
                 $scoreB = 0;
 
-                if ($titleA === $q) $scoreA += 1000;
-                if (str_starts_with($titleA, $q)) $scoreA += 500;
-                
-                if ($titleB === $q) $scoreB += 1000;
-                if (str_starts_with($titleB, $q)) $scoreB += 500;
+                if ($titleA === $q)
+                    $scoreA += 1000;
+                if (str_starts_with($titleA, $q))
+                    $scoreA += 500;
+
+                if ($titleB === $q)
+                    $scoreB += 1000;
+                if (str_starts_with($titleB, $q))
+                    $scoreB += 500;
 
                 // 3. Relevancia histórica (votos)
                 $scoreA += ($a['vote_count'] ?? 0) / 10;
                 $scoreB += ($b['vote_count'] ?? 0) / 10;
 
-                if (abs($scoreA - $scoreB) > 1) return $scoreB <=> $scoreA;
+                if (abs($scoreA - $scoreB) > 1)
+                    return $scoreB <=> $scoreA;
 
                 // 4. Popularidad actual
                 return $b['popularity'] <=> $a['popularity'];
@@ -339,7 +367,8 @@ class MedioController extends Controller
                 'total_pages' => $simulatedTotalPages,
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error en searchSeries: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
@@ -355,21 +384,21 @@ class MedioController extends Controller
 
         try {
             $token = config('services.tmdb.key');
-            $page = (int) $request->query('page', 1);
+            $page = (int)$request->query('page', 1);
             $limit = 20;
 
             // Escaneamos 10 páginas de golpe de TMDB para asegurar que capturamos clásicos sepultados (ej: Star Wars Ep V)
-            $pool = \Illuminate\Support\Facades\Http::pool(fn ($pool) => [
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 6]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 7]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 8]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 9]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 10]),
+            $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 6]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 7]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 8]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 9]),
+            $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 10]),
             ]);
 
             $allResults = [];
@@ -405,7 +434,7 @@ class MedioController extends Controller
 
                     if (!empty($allResults)) {
                         $allResults = collect($allResults)->unique('id')->values()->all();
-                        usort($allResults, function($a, $b) use ($query) {
+                        usort($allResults, function ($a, $b) use ($query) {
                             $titleA = $a['title'] ?? '';
                             $titleB = $b['title'] ?? '';
                             similar_text(strtolower($titleA), strtolower($query), $percA);
@@ -434,11 +463,12 @@ class MedioController extends Controller
                 $item['year'] = isset($item['release_date']) ? substr($item['release_date'], 0, 4) : 'N/A';
             }
 
-            usort($resultsWithRatings, function($a, $b) use ($query) {
+            usort($resultsWithRatings, function ($a, $b) use ($query) {
                 // 1. Prioridad máxima: Presencia de póster
                 $posterA = !empty($a['poster_path']) ? 1 : 0;
                 $posterB = !empty($b['poster_path']) ? 1 : 0;
-                if ($posterA !== $posterB) return $posterB <=> $posterA;
+                if ($posterA !== $posterB)
+                    return $posterB <=> $posterA;
 
                 // 2. Bonus de Relevancia por título (Coincidencia exacta o empieza por...)
                 $titleA = strtolower($a['title'] ?? '');
@@ -448,18 +478,23 @@ class MedioController extends Controller
                 $scoreA = 0;
                 $scoreB = 0;
 
-                if ($titleA === $q) $scoreA += 1000;
-                if (str_starts_with($titleA, $q)) $scoreA += 500;
-                
-                if ($titleB === $q) $scoreB += 1000;
-                if (str_starts_with($titleB, $q)) $scoreB += 500;
+                if ($titleA === $q)
+                    $scoreA += 1000;
+                if (str_starts_with($titleA, $q))
+                    $scoreA += 500;
+
+                if ($titleB === $q)
+                    $scoreB += 1000;
+                if (str_starts_with($titleB, $q))
+                    $scoreB += 500;
 
                 // 3. Añadimos el peso de los votos (Relevancia histórica)
                 // Usamos logaritmo o división para que no eclipse totalmente la relevancia por nombre
                 $scoreA += ($a['vote_count'] ?? 0) / 10;
                 $scoreB += ($b['vote_count'] ?? 0) / 10;
 
-                if (abs($scoreA - $scoreB) > 1) return $scoreB <=> $scoreA;
+                if (abs($scoreA - $scoreB) > 1)
+                    return $scoreB <=> $scoreA;
 
                 // 4. Último criterio: Popularidad actual de la API
                 return $b['popularity'] <=> $a['popularity'];
@@ -472,86 +507,86 @@ class MedioController extends Controller
                 'total_pages' => min(10, $realTotalPages),
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error en searchMovies: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
     }
 
     /**
-     * Obtener videojuegos populares de IGDB
+     * Obtener videojuegos populares de IGDB con caché.
      */
     public function getPopularGames(Request $request)
     {
         try {
             $accessToken = $this->getIgdbToken();
-            if (!$accessToken) {
-                return response()->json(['success' => false, 'message' => 'Error de autenticación con IGDB'], 500);
-            }
-
-            $page = (int) $request->query('page', 1);
-            $limit = 20;
-            $offset = ($page - 1) * $limit;
-
-            $ultimoMes = now()->subDays(30)->timestamp;
-            $ahora = now()->timestamp;
-
-            // Query para IGDB: Juegos populares lanzados recientemente
-            $query = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
-                      where first_release_date >= {$ultimoMes} & first_release_date <= {$ahora}; 
-                      sort total_rating_count desc; 
-                      limit {$limit}; 
-                      offset {$offset};";
-
-            $response = Http::withoutVerifying()
-                ->withHeaders([
-                    'Client-ID' => config('services.igdb.client_id'),
-                    'Authorization' => 'Bearer ' . $accessToken,
-                ])
-                ->withBody($query, 'text/plain')
-                ->post('https://api.igdb.com/v4/games');
-
-            if ($response->failed()) {
-                Log::error('IGDB API Error: ' . $response->body());
-                return response()->json(['success' => false, 'message' => 'Error API Juegos'], $response->status());
-            }
-
-            $games = $response->json();
-            $formattedGames = $this->formatIgdbGames($games);
-
-            // 🔥 FILTRO ANTIDUPLICADOS MEJORADO
-            $uniqueGames = collect($formattedGames)
-                ->groupBy(function ($item) {
-                    return strtolower(trim($item['name'])) . '|' . ($item['year'] ?? 'N/A');
-                })
-                ->map(function ($group) {
-                    // Si hay varios con el mismo nombre, priorizamos:
-                    // 1. Juego Principal, Remake o Remaster
-                    // 2. El que tenga más puntuaciones (popularidad)
-                    return $group->sort(function ($a, $b) {
-                        $prioA = in_array($a['category_name'], ['Juego Principal', 'Remake', 'Remaster']) ? 0 : 1;
-                        $prioB = in_array($b['category_name'], ['Juego Principal', 'Remake', 'Remaster']) ? 0 : 1;
-                        
-                        if ($prioA !== $prioB) return $prioA <=> $prioB;
-                        return $b['added'] <=> $a['added'];
-                    })->first();
-                })
-                ->values()
-                ->all();
-
-            // Fusionamos con notas locales
+            if (!$accessToken) return response()->json(['success' => false, 'message' => 'Error IGDB Token'], 500);
+            $page = (int)$request->query('page', 1);
+            $genre = $request->query('genre');
+            $year = $request->query('year');
+            $platform = $request->query('platform');
+            $offset = ($page - 1) * 20;
+            $cacheKey = "popular_games_{$page}_{$genre}_{$year}_{$platform}";
+            $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset, $genre, $year, $platform) {
+                $where = ["cover != null"];
+                if ($genre) $where[] = "genres = ({$genre})";
+                if ($platform) $where[] = "platforms = ({$platform})";
+                if ($year) {
+                    $start = strtotime("{$year}-01-01");
+                    $end = strtotime("{$year}-12-31");
+                    $where[] = "first_release_date >= {$start} & first_release_date <= {$end}";
+                } else if (!$genre) {
+                    // POPULARES: Últimos 12 meses
+                    $haceUnAno = now()->subYear()->timestamp;
+                    $where[] = "first_release_date >= {$haceUnAno}";
+                }
+                $whereStr = implode(' & ', $where);
+                $query = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
+                          where {$whereStr}; sort total_rating_count desc; limit 20; offset {$offset};";
+                $response = Http::withoutVerifying()->withHeaders(['Client-ID' => config('services.igdb.client_id'),'Authorization' => 'Bearer ' . $accessToken])
+                    ->withBody($query, 'text/plain')->post('https://api.igdb.com/v4/games');
+                return $response->failed() ? null : ['results' => $response->json(), 'total_results' => 500];
+            });
+            if (!$cachedData) return response()->json(['success' => false, 'message' => 'Error API Juegos'], 500);
+            $formatted = $this->formatIgdbGames($cachedData['results']);
+            
+            // Simplificamos: nos quedamos con los resultados únicos por ID
+            $uniqueGames = collect($formatted)->unique('id')->values()->all();
             $resultsWithRatings = $this->mergeWithLocalRatings($uniqueGames, 'videojuego');
 
             return response()->json([
                 'success' => true,
                 'data' => $resultsWithRatings,
-                'total_results' => 1000, // IGDB no devuelve total en la misma query fácilmente, simulamos para paginación
+                'total_results' => $cachedData['total_results']
             ], 200);
 
-        } catch (\Exception $e) {
-            Log::error('Exception in getPopularGames: ' . $e->getMessage());
+        }
+        catch (\Exception $e) {
+            \Log::error('Exception in getPopularGames: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
+    }
+
+    public function getLatestGames(Request $request)
+    {
+        try {
+            $accessToken = $this->getIgdbToken();
+            if (!$accessToken) return response()->json(['success' => false, 'message' => 'Error IGDB Token'], 500);
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_games_v8', 3600, function () use ($accessToken) {
+                $hace120Dias = now()->subDays(120)->timestamp;
+                $manana = now()->addDay()->timestamp;
+                $query = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
+                          where first_release_date >= {$hace120Dias} & first_release_date <= {$manana} & cover != null; 
+                          sort total_rating_count desc; limit 12;";
+                $response = Http::withoutVerifying()->withHeaders(['Client-ID' => config('services.igdb.client_id'),'Authorization' => 'Bearer ' . $accessToken])
+                    ->withBody($query, 'text/plain')->post('https://api.igdb.com/v4/games');
+                return $response->failed() ? [] : $response->json();
+            });
+            if (!$data) return response()->json(['success' => true, 'data' => []], 200);
+            $formatted = $this->formatIgdbGames($data);
+            return response()->json(['success' => true, 'data' => $formatted], 200);
+        } catch (\Exception $e) { return response()->json(['success' => false, 'message' => $e->getMessage()], 500); }
     }
 
     /**
@@ -568,15 +603,15 @@ class MedioController extends Controller
                 return response()->json(['success' => false, 'message' => 'Error de autenticación con IGDB'], 500);
             }
 
-            $page = (int) $request->query('page', 1);
+            $page = (int)$request->query('page', 1);
             $limit = 20;
             // Aumentamos el fetch a 100 para que al limpiar duplicados nos queden suficientes
-            $fetchLimit = 100; 
+            $fetchLimit = 100;
 
             // Escapamos posibles comillas en la consulta para evitar que rompa IGDB
             $safeQuery = str_replace('"', '\"', $queryText);
 
-            $buildQuery = function($q) use ($fetchLimit) {
+            $buildQuery = function ($q) use ($fetchLimit) {
                 return "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
                         search \"{$q}\"; 
                         limit {$fetchLimit};";
@@ -584,9 +619,9 @@ class MedioController extends Controller
 
             $response = Http::withoutVerifying()
                 ->withHeaders([
-                    'Client-ID' => config('services.igdb.client_id'),
-                    'Authorization' => 'Bearer ' . $accessToken,
-                ])
+                'Client-ID' => config('services.igdb.client_id'),
+                'Authorization' => 'Bearer ' . $accessToken,
+            ])
                 ->withBody($buildQuery($safeQuery), 'text/plain')
                 ->post('https://api.igdb.com/v4/games');
 
@@ -601,34 +636,31 @@ class MedioController extends Controller
             if (empty($games) && strlen($safeQuery) > 3) {
                 // 1. Quitar 'remake', 'remastered' como intentamos antes
                 $cleanedQuery = trim(preg_replace('/(remake|remaster|remastered)/i', '', $safeQuery));
-                
+
                 // 2. Extraer palabras para buscar coincidencias parciales por si hay typos
-                $words = explode(' ', str_replace(['-', '_', '.'], ' ', $cleanedQuery));
+                $words = explode(' ', str_replace(['-', '_', '.', ':'], ' ', $cleanedQuery));
                 $validWords = array_filter($words, fn($w) => strlen($w) >= 3);
-                
+
                 $whereClauses = [];
-                if (!empty($cleanedQuery)) {
-                    $whereClauses[] = "search \"{$cleanedQuery}\""; 
-                }
                 foreach ($validWords as $w) {
-                    $whereClauses[] = "name ~ *\"{$w}\"*";
+                    $whereClauses[] = "name ~ *\"{$w}\"*"; // Wildcard ~ *word* (IGDB flavor)
                 }
 
                 if (!empty($whereClauses)) {
-                    $fallbackWhere = implode(' | ', $whereClauses);
+                    $fallbackWhere = implode(' & ', $whereClauses); // AND para que salgan los que contengan todas las palabras
                     $fallbackResponse = Http::withoutVerifying()
                         ->withHeaders([
-                            'Client-ID' => config('services.igdb.client_id'),
-                            'Authorization' => 'Bearer ' . $accessToken,
-                        ])
+                        'Client-ID' => config('services.igdb.client_id'),
+                        'Authorization' => 'Bearer ' . $accessToken,
+                    ])
                         ->withBody("fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; where {$fallbackWhere}; limit {$fetchLimit};", 'text/plain')
                         ->post('https://api.igdb.com/v4/games');
-                    
+
                     if ($fallbackResponse->ok()) {
                         $games = $fallbackResponse->json();
-                        
+
                         // Si hemos usado el modo flexible, re-ordenamos en el servidor simulando semejanza de texto
-                        usort($games, function($a, $b) use ($queryText) {
+                        usort($games, function ($a, $b) use ($queryText) {
                             $titleA = $a['name'] ?? '';
                             $titleB = $b['name'] ?? '';
                             similar_text(strtolower($titleA), strtolower($queryText), $percA);
@@ -647,16 +679,18 @@ class MedioController extends Controller
             // 🔥 FILTRO ANTIDUPLICADOS + ORDEN GLOBAL POR POPULARIDAD
             $uniqueGames = collect($formattedGames)
                 ->groupBy(function ($item) {
-                    return strtolower(trim($item['name'])) . '|' . ($item['year'] ?? 'N/A');
-                })
+                return strtolower(trim($item['name'])) . '|' . ($item['year'] ?? 'N/A');
+            })
                 ->map(function ($group) {
-                    return $group->sort(function ($a, $b) {
+                return $group->sort(function ($a, $b) {
                         // Priorizar categorías principales
                         $prioA = in_array($a['category_name'], ['Juego Principal', 'Remake', 'Remaster']) ? 0 : 1;
                         $prioB = in_array($b['category_name'], ['Juego Principal', 'Remake', 'Remaster']) ? 0 : 1;
-                        if ($prioA !== $prioB) return $prioA <=> $prioB;
+                        if ($prioA !== $prioB)
+                            return $prioA <=> $prioB;
                         return $b['added'] <=> $a['added'];
-                    })->first();
+                    }
+                    )->first();
                 })
                 ->sortByDesc('added') // Ordenamos por votos/popularidad
                 ->slice(($page - 1) * $limit, $limit) // Paginar manualmente tras limpiar
@@ -672,7 +706,8 @@ class MedioController extends Controller
                 'total_results' => 100, // Simulado para búsqueda
             ], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error en searchGames: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
@@ -687,30 +722,30 @@ class MedioController extends Controller
             $token = config('services.tmdb.key');
             $response = Http::withoutVerifying()
                 ->get("https://api.themoviedb.org/3/movie/{$id}", [
-                    'api_key' => $token,
-                    'language' => 'es-ES',
-                    'append_to_response' => 'credits,videos',
-                ]);
+                'api_key' => $token,
+                'language' => 'es-ES',
+                'append_to_response' => 'credits,videos,watch/providers,external_ids',
+            ]);
 
             if ($response->failed()) {
                 return response()->json(['success' => false, 'message' => 'Pelicula no encontrada'], 404);
             }
 
             $movie = $response->json();
-            
+
             // Año de lanzamiento
             $movie['year'] = isset($movie['release_date']) ? substr($movie['release_date'], 0, 4) : 'N/A';
-            
+
             // Casting (limitado a los 10 más importantes para un diseño limpio)
             $movie['cast'] = array_slice($movie['credits']['cast'] ?? [], 0, 10);
-            
+
             // Director
             $movie['director'] = collect($movie['credits']['crew'] ?? [])->firstWhere('job', 'Director')['name'] ?? 'Desconocido';
 
             // --- LÓGICA DE TRAILERS MEJORADA ---
             // Buscamos vídeos en español
             $spanVideos = collect($movie['videos']['results'] ?? []);
-            
+
             // Buscamos vídeos en inglés (siempre, para tener backups)
             $engVideosResponse = Http::withoutVerifying()->get("https://api.themoviedb.org/3/movie/{$id}/videos", [
                 'api_key' => $token,
@@ -718,40 +753,62 @@ class MedioController extends Controller
             $engVideos = collect($engVideosResponse->json()['results'] ?? []);
 
             // Combinamos dándole una ligera prioridad a los resultados en español si son del mismo tipo
-            $allVideos = $spanVideos->map(function($v) { $v['lang_priority'] = 1; return $v; })
-                ->concat($engVideos->map(function($v) { $v['lang_priority'] = 0; return $v; }));
+            $allVideos = $spanVideos->map(function ($v) {
+                $v['lang_priority'] = 1;
+                return $v;
+            })
+                ->concat($engVideos->map(function ($v) {
+                $v['lang_priority'] = 0;
+                return $v;
+            }));
 
             // Ordenamos por: Tipo (Trailer > Teaser), Oficialidad, y luego Idioma
-            $bestTrailer = $allVideos->sort(function($a, $b) {
+            $bestTrailer = $allVideos->sort(function ($a, $b) {
                 $typeWeights = ['Trailer' => 10, 'Teaser' => 5, 'Clip' => 1];
                 $weightA = $typeWeights[$a['type'] ?? ''] ?? 0;
                 $weightB = $typeWeights[$b['type'] ?? ''] ?? 0;
-                
-                if ($weightA !== $weightB) return $weightB <=> $weightA;
-                if ($a['official'] !== $b['official']) return $b['official'] <=> $a['official'];
+
+                if ($weightA !== $weightB)
+                    return $weightB <=> $weightA;
+                if ($a['official'] !== $b['official'])
+                    return $b['official'] <=> $a['official'];
                 return $b['lang_priority'] <=> $a['lang_priority'];
             })->first();
 
-            $movie['trailer_url'] = $bestTrailer && ($bestTrailer['site'] ?? '') === 'YouTube' 
-                ? "https://www.youtube.com/embed/{$bestTrailer['key']}" 
+            $movie['trailer_url'] = $bestTrailer && ($bestTrailer['site'] ?? '') === 'YouTube'
+                ? "https://www.youtube.com/embed/{$bestTrailer['key']}"
                 : null;
-            
+
             // Guardamos la ID de YouTube por si el usuario quiere abrirlo fuera
             $movie['youtube_id'] = $bestTrailer['key'] ?? null;
+            
+            // Link primario (Prioridad: Web oficial > IMDB > JustWatch)
+            $imdbId = $movie['external_ids']['imdb_id'] ?? null;
+            $movie['link_primario'] = $movie['homepage'] ?: ($imdbId ? "https://www.imdb.com/title/{$imdbId}" : null);
+            
+            // --- DÓNDE VER (JustWatch via TMDB) ---
+            $providers = $movie['watch/providers']['results']['ES'] ?? null;
+            $movie['donde_ver'] = [
+                'streaming' => $providers['flatrate'] ?? [],
+                'alquiler' => $providers['rent'] ?? [],
+                'compra' => $providers['buy'] ?? [],
+                'link' => $providers['link'] ?? null
+            ];
 
             // --- NOTA MEDIA LOCAL (MediaVerse) ---
             $medioLocal = Medio::with('valoraciones')
                 ->where('api_id', $id)
                 ->where('tipo', 'pelicula')
                 ->first();
-            
+
             $movie['puntuacion_usuarios'] = ($medioLocal && $medioLocal->valoraciones->count() > 0)
                 ? number_format($medioLocal->valoraciones->avg('puntuacion'), 1)
                 : null;
 
             return response()->json(['success' => true, 'data' => $movie], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
     }
@@ -765,78 +822,100 @@ class MedioController extends Controller
             $token = config('services.tmdb.key');
             $response = Http::withoutVerifying()
                 ->get("https://api.themoviedb.org/3/tv/{$id}", [
-                    'api_key' => $token,
-                    'language' => 'es-ES',
-                    'append_to_response' => 'aggregate_credits,videos',
-                ]);
+                'api_key' => $token,
+                'language' => 'es-ES',
+                'append_to_response' => 'aggregate_credits,videos,watch/providers,external_ids',
+            ]);
 
             if ($response->failed()) {
                 return response()->json(['success' => false, 'message' => 'Serie no encontrada'], 404);
             }
 
             $tv = $response->json();
-            
+
             // Año de lanzamiento
             $tv['year'] = isset($tv['first_air_date']) ? substr($tv['first_air_date'], 0, 4) : 'N/A';
-            
+
             // Casting (Usamos aggregate_credits para ver a todos los que han pasado por la serie)
             $tv['cast'] = collect($tv['aggregate_credits']['cast'] ?? [])
-                ->map(function($actor) {
-                    // Mapeamos los campos para que el frontend no rompa
-                    return [
-                        'id' => $actor['id'],
-                        'name' => $actor['name'],
-                        'profile_path' => $actor['profile_path'],
-                        'character' => $actor['roles'][0]['character'] ?? 'Desconocido',
-                    ];
-                })
+                ->map(function ($actor) {
+                // Mapeamos los campos para que el frontend no rompa
+                return [
+                'id' => $actor['id'],
+                'name' => $actor['name'],
+                'profile_path' => $actor['profile_path'],
+                'character' => $actor['roles'][0]['character'] ?? 'Desconocido',
+                ];
+            })
                 ->take(10)
                 ->values()
                 ->toArray();
-            
+
             // Creador
             $tv['director'] = isset($tv['created_by'][0]) ? $tv['created_by'][0]['name'] : 'Varios';
 
             // --- LÓGICA DE TRAILERS MEJORADA ---
             $spanVideos = collect($tv['videos']['results'] ?? []);
-            
+
             $engVideosResponse = Http::withoutVerifying()->get("https://api.themoviedb.org/3/tv/{$id}/videos", [
                 'api_key' => $token,
             ]);
             $engVideos = collect($engVideosResponse->json()['results'] ?? []);
 
-            $allVideos = $spanVideos->map(function($v) { $v['lang_priority'] = 1; return $v; })
-                ->concat($engVideos->map(function($v) { $v['lang_priority'] = 0; return $v; }));
+            $allVideos = $spanVideos->map(function ($v) {
+                $v['lang_priority'] = 1;
+                return $v;
+            })
+                ->concat($engVideos->map(function ($v) {
+                $v['lang_priority'] = 0;
+                return $v;
+            }));
 
-            $bestTrailer = $allVideos->sort(function($a, $b) {
+            $bestTrailer = $allVideos->sort(function ($a, $b) {
                 $typeWeights = ['Trailer' => 10, 'Teaser' => 5, 'Clip' => 1];
                 $weightA = $typeWeights[$a['type'] ?? ''] ?? 0;
                 $weightB = $typeWeights[$b['type'] ?? ''] ?? 0;
-                
-                if ($weightA !== $weightB) return $weightB <=> $weightA;
-                if ($a['official'] !== $b['official']) return $b['official'] <=> $a['official'];
+
+                if ($weightA !== $weightB)
+                    return $weightB <=> $weightA;
+                if ($a['official'] !== $b['official'])
+                    return $b['official'] <=> $a['official'];
                 return $b['lang_priority'] <=> $a['lang_priority'];
             })->first();
 
-            $tv['trailer_url'] = $bestTrailer && ($bestTrailer['site'] ?? '') === 'YouTube' 
-                ? "https://www.youtube.com/embed/{$bestTrailer['key']}" 
+            $tv['trailer_url'] = $bestTrailer && ($bestTrailer['site'] ?? '') === 'YouTube'
+                ? "https://www.youtube.com/embed/{$bestTrailer['key']}"
                 : null;
-            
+
             $tv['youtube_id'] = $bestTrailer['key'] ?? null;
+
+            // Link primario (Prioridad: Web oficial > IMDB > JustWatch)
+            $imdbId = $tv['external_ids']['imdb_id'] ?? null;
+            $tv['link_primario'] = $tv['homepage'] ?: ($imdbId ? "https://www.imdb.com/title/{$imdbId}" : null);
+
+            // --- DÓNDE VER (JustWatch via TMDB) ---
+            $providers = $tv['watch/providers']['results']['ES'] ?? null;
+            $tv['donde_ver'] = [
+                'streaming' => $providers['flatrate'] ?? [],
+                'alquiler' => $providers['rent'] ?? [],
+                'compra' => $providers['buy'] ?? [],
+                'link' => $providers['link'] ?? null
+            ];
 
             // --- NOTA MEDIA LOCAL (MediaVerse) ---
             $medioLocal = Medio::with('valoraciones')
                 ->where('api_id', $id)
                 ->where('tipo', 'serie')
                 ->first();
-            
+
             $tv['puntuacion_usuarios'] = ($medioLocal && $medioLocal->valoraciones->count() > 0)
                 ? number_format($medioLocal->valoraciones->avg('puntuacion'), 1)
                 : null;
 
             return response()->json(['success' => true, 'data' => $tv], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
     }
@@ -856,14 +935,15 @@ class MedioController extends Controller
                       first_release_date, rating, aggregated_rating, total_rating_count, 
                       genres.name, platforms.name, videos.video_id, 
                       involved_companies.company.name, involved_companies.developer,
-                      websites.url, websites.category; 
+                      websites.url, websites.category,
+                      external_games.url, external_games.category; 
                       where id = {$id};";
 
             $response = Http::withoutVerifying()
                 ->withHeaders([
-                    'Client-ID' => config('services.igdb.client_id'),
-                    'Authorization' => 'Bearer ' . $accessToken,
-                ])
+                'Client-ID' => config('services.igdb.client_id'),
+                'Authorization' => 'Bearer ' . $accessToken,
+            ])
                 ->withBody($query, 'text/plain')
                 ->post('https://api.igdb.com/v4/games');
 
@@ -872,8 +952,8 @@ class MedioController extends Controller
             }
 
             $game = $response->json()[0];
-            
-            // Formatear datos para el frontend
+
+            // Formatear datos para el frontend con data_get para evitar errores si faltan campos
             $gameDetail = [
                 'id' => $game['id'],
                 'title' => $game['name'],
@@ -885,24 +965,70 @@ class MedioController extends Controller
                 'vote_average' => isset($game['rating']) ? round($game['rating'] / 10, 1) : null,
                 'genres' => $game['genres'] ?? [],
                 'platforms' => $game['platforms'] ?? [],
-                'developer' => collect($game['involved_companies'] ?? [])->firstWhere('developer', true)['company']['name'] ?? 'Varios',
+                'developer' => data_get(collect($game['involved_companies'] ?? [])->firstWhere('developer', true), 'company.name', 'Varios'),
                 'trailer_url' => isset($game['videos'][0]) ? "https://www.youtube.com/embed/{$game['videos'][0]['video_id']}" : null,
-                'metacritic' => isset($game['aggregated_rating']) ? round($game['aggregated_rating']) : null,
+                'metacritic' => isset($game['aggregated_rating']) ? round($game['aggregated_rating'] / 10, 1) : null,
+                'tiendas' => collect($game['external_games'] ?? [])->map(function($ext) {
+                    $stores = [
+                        1 => 'Steam', 5 => 'GOG', 10 => 'Epic Games Store', 11 => 'Itch.io',
+                        14 => 'Discord', 20 => 'Amazon', 26 => 'PlayStation Store', 
+                        28 => 'Xbox Store', 29 => 'Nintendo Store', 54 => 'Google Play', 
+                        55 => 'App Store'
+                    ];
+                    $cat = data_get($ext, 'category', 0);
+                    return [
+                        'nombre' => $stores[$cat] ?? null,
+                        'url' => data_get($ext, 'url', '#')
+                    ];
+                })->concat(collect($game['websites'] ?? [])->map(function($web) {
+                    $stores = [
+                        13 => 'Steam', 10 => 'App Store', 11 => 'App Store', 12 => 'Google Play',
+                        15 => 'Discord'
+                    ];
+                    $cat = data_get($web, 'category', 0);
+                    $url = data_get($web, 'url', '');
+                    $nombre = $stores[$cat] ?? null;
+
+                    // Si no tiene nombre por categoría, buscamos por URL (Greedy)
+                    if (!$nombre && $url) {
+                        if (str_contains($url, 'steampowered.com')) $nombre = 'Steam';
+                        elseif (str_contains($url, 'epicgames.com')) $nombre = 'Epic Games Store';
+                        elseif (str_contains($url, 'gog.com')) $nombre = 'GOG';
+                        elseif (str_contains($url, 'microsoft.com/store')) $nombre = 'Xbox Store';
+                        elseif (str_contains($url, 'playstation.com')) $nombre = 'PlayStation Store';
+                        elseif (str_contains($url, 'nintendo.com')) $nombre = 'Nintendo Store';
+                    }
+
+                    return [
+                        'nombre' => $nombre,
+                        'url' => $url ?: '#'
+                    ];
+                }))
+                ->filter(fn($s) => !empty($s['nombre']) && $s['url'] !== '#')
+                ->unique('nombre')
+                ->values()
+                ->toArray()
             ];
+
+            Log::info("Tiendas encontradas para juego {$id}: " . count($gameDetail['tiendas']));
+
+            // Link primario para juegos (El primero de las tiendas o sitio oficial)
+            $gameDetail['link_primario'] = collect($gameDetail['tiendas'])->first()['url'] ?? collect($game['websites'] ?? [])->firstWhere('category', 1)['url'] ?? null;
 
             // --- NOTA MEDIA LOCAL (MediaVerse) ---
             $medioLocal = Medio::with('valoraciones')
                 ->where('api_id', $id)
                 ->where('tipo', 'videojuego')
                 ->first();
-            
+
             $gameDetail['puntuacion_usuarios'] = ($medioLocal && $medioLocal->valoraciones->count() > 0)
                 ? number_format($medioLocal->valoraciones->avg('puntuacion'), 1)
                 : null;
 
             return response()->json(['success' => true, 'data' => $gameDetail], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error getGameDetail: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
@@ -915,14 +1041,14 @@ class MedioController extends Controller
     {
         try {
             $token = config('services.tmdb.key');
-            
+
             // 1. Info básica del actor
             $personResponse = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
                 ->get("https://api.themoviedb.org/3/person/{$id}", [
-                    'api_key' => $token,
-                    'language' => 'es-ES',
-                    'append_to_response' => 'combined_credits'
-                ]);
+                'api_key' => $token,
+                'language' => 'es-ES',
+                'append_to_response' => 'combined_credits'
+            ]);
 
             if ($personResponse->failed()) {
                 return response()->json(['success' => false, 'message' => 'Actor no encontrado'], 404);
@@ -937,15 +1063,15 @@ class MedioController extends Controller
                 ->values()
                 ->take(50); // Top 50 producciones
 
-            $person['filmography'] = $credits->map(function($item) {
+            $person['filmography'] = $credits->map(function ($item) {
                 return [
-                    'id' => $item['id'],
-                    'tipo' => $item['media_type'], // 'movie' or 'tv'
-                    'title' => $item['title'] ?? $item['name'] ?? 'Sin título',
-                    'poster_path' => $item['poster_path'] ?? null,
-                    'year' => isset($item['release_date']) ? substr($item['release_date'], 0, 4) : (isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A'),
-                    'role' => $item['character'] ?? 'Varios',
-                    'popularity' => $item['popularity'] ?? 0
+                'id' => $item['id'],
+                'tipo' => $item['media_type'], // 'movie' o 'tv'
+                'title' => $item['title'] ?? $item['name'] ?? 'Sin título',
+                'poster_path' => $item['poster_path'] ?? null,
+                'year' => isset($item['release_date']) ? substr($item['release_date'], 0, 4) : (isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A'),
+                'role' => $item['character'] ?? 'Varios',
+                'popularity' => $item['popularity'] ?? 0
                 ];
             });
 
@@ -953,8 +1079,71 @@ class MedioController extends Controller
 
             return response()->json(['success' => true, 'data' => $person], 200);
 
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error getActorDetail: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
+        }
+    }
+
+    /**
+     * OBTENER ACTORES POPULARES
+     */
+    public function getPopularActors(Request $request)
+    {
+        try {
+            $token = config('services.tmdb.key');
+            $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+                ->get('https://api.themoviedb.org/3/person/popular', [
+                'api_key' => $token,
+                'language' => 'es-ES',
+                'page' => $request->query('page', 1)
+            ]);
+
+            if ($response->failed()) {
+                return response()->json(['success' => false, 'message' => 'Error API Actores'], $response->status());
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $response->json()['results'] ?? []
+            ], 200);
+
+        }
+        catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
+        }
+    }
+
+    /**
+     * BUSCAR ACTORES POR NOMBRE
+     */
+    public function searchActors(Request $request)
+    {
+        $request->validate(['query' => 'required|string|min:2']);
+        $query = $request->input('query');
+
+        try {
+            $token = config('services.tmdb.key');
+            $response = \Illuminate\Support\Facades\Http::withOptions(['verify' => false])
+                ->get('https://api.themoviedb.org/3/search/person', [
+                'api_key' => $token,
+                'language' => 'es-ES',
+                'query' => $query,
+                'page' => $request->query('page', 1)
+            ]);
+
+            if ($response->failed()) {
+                return response()->json(['success' => false, 'message' => 'Error al buscar actores'], $response->status());
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $response->json()['results'] ?? []
+            ], 200);
+
+        }
+        catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
     }

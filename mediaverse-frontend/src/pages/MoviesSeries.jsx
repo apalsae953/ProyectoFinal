@@ -2,97 +2,100 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
-function Games() {
-    const [juegos, setJuegos] = useState([]);
+function MoviesSeries() {
+    const [peliculas, setPeliculas] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [busqueda, setBusqueda] = useState('');
     const [buscando, setBuscando] = useState(false);
     const [paginaActual, setPaginaActual] = useState(1);
     const [totalPaginas, setTotalPaginas] = useState(1);
+    const [modo, setModo] = useState(localStorage.getItem('mediaverse_modo') || 'movies');
 
-    // No persistimos la búsqueda
+    // Persistimos solo el modo
+    useEffect(() => {
+        localStorage.setItem('mediaverse_modo', modo);
+    }, [modo]);
     const navigate = useNavigate();
-    const [jugados, setJugados] = useState([]);
+    const [vistos, setVistos] = useState([]);
     const [verMasTarde, setVerMasTarde] = useState([]);
     const [valoraciones, setValoraciones] = useState([]);
+
     const [filtros, setFiltros] = useState({
         genre: '',
         year: '',
-        platform: ''
+        sort: 'popularity.desc'
     });
-
-    const [favoritos, setFavoritos] = useState([]);
 
     useEffect(() => {
         if(localStorage.getItem('auth_token')) {
             api.get('/interactions/me').then(res => {
                 const data = res.data.data;
-                // Parseamos api_id a Number porque la BBDD lo devuelve como String y .includes fallaría
-                if(data.visto) setJugados(data.visto.filter(i => i.medio?.tipo === 'videojuego').map(i => Number(i.medio?.api_id)));
-                if(data.ver_mas_tarde) setVerMasTarde(data.ver_mas_tarde.filter(i => i.medio?.tipo === 'videojuego').map(i => Number(i.medio?.api_id)));
-                if(data.valoraciones) setValoraciones(data.valoraciones.filter(v => v.medio?.tipo === 'videojuego').map(v => ({api_id: Number(v.medio?.api_id), score: v.puntuacion})));
+                const tipoActual = modo === 'movies' ? 'pelicula' : 'serie';
+                if(data.visto) setVistos(data.visto.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
+                if(data.ver_mas_tarde) setVerMasTarde(data.ver_mas_tarde.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
+                if(data.valoraciones) setValoraciones(data.valoraciones.filter(v => v.medio?.tipo === tipoActual).map(v => ({api_id: Number(v.medio?.api_id), score: v.puntuacion})));
             }).catch(console.error);
         }
-    }, [cargando]); // Actualiza post carga inicial
+    }, [cargando, modo]); // Listar al cambiar de página/modo
 
-    const toggleInteraccion = (e, juego, tipoLogico) => {
+    const toggleInteraccion = (e, peli, toggleTipo) => {
         e.stopPropagation();
         if (!localStorage.getItem('auth_token')) {
             import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Debes iniciar sesión para hacer esto', showConfirmButton: false, timer: 2500, background: '#1e1e1e', color: '#fff', iconColor: '#e50914' }));
             return;
         }
 
-        // Optimistic UI Update para no haber latencia visual (Mutuamente exclusivos)
-        if(tipoLogico === 'jugado') {
-            if(!jugados.includes(juego.id)) {
-                setJugados(prev => [...prev, juego.id]);
-                setVerMasTarde(prev => prev.filter(id => id !== juego.id));
+        // Optimistic UI Update para no tener latencia visual (Mutuamente exclusivos)
+        if(toggleTipo === 'visto') {
+            if(!vistos.includes(peli.id)) {
+                setVistos(prev => [...prev, peli.id]);
+                setVerMasTarde(prev => prev.filter(id => id !== peli.id));
             } else {
-                setJugados(prev => prev.filter(id => id !== juego.id));
+                setVistos(prev => prev.filter(id => id !== peli.id));
             }
-        } else if(tipoLogico === 'verMasTarde') {
-            if(!verMasTarde.includes(juego.id)) {
-                setVerMasTarde(prev => [...prev, juego.id]);
-                setJugados(prev => prev.filter(id => id !== juego.id));
+        } else if(toggleTipo === 'verMasTarde') {
+            if(!verMasTarde.includes(peli.id)) {
+                setVerMasTarde(prev => [...prev, peli.id]);
+                setVistos(prev => prev.filter(id => id !== peli.id));
             } else {
-                setVerMasTarde(prev => prev.filter(id => id !== juego.id));
+                setVerMasTarde(prev => prev.filter(id => id !== peli.id));
             }
         }
 
-        // Traducir 'jugado' a 'visto' para que SQL no falle
-        const tipoSql = tipoLogico === 'jugado' ? 'visto' : 'ver_mas_tarde';
+        const tipoLogicoSql = toggleTipo === 'visto' ? 'visto' : 'ver_mas_tarde';
 
         api.post('/interactions/toggle', {
-            api_id: juego.id,
-            tipo_medio: 'videojuego',
-            titulo: juego.name,
-            poster_path: juego.background_image || '',
-            tipo_interaccion: tipoSql
+            api_id: peli.id,
+            tipo_medio: modo === 'movies' ? 'pelicula' : 'serie', // Coincide con BBDD
+            titulo: peli.title || peli.name,
+            poster_path: peli.poster_path || '',
+            tipo_interaccion: tipoLogicoSql
         }).catch(err => {
-            console.error("Error guardando interacción:", err);
+            console.error("Error interaccion:", err);
             // Podríamos hacer rollback aquí, pero raramente falla si está autenticado
         });
     };
 
-    const cargarJuegos = (page = 1) => {
+    const cargarPopulares = (page = 1, modoActual = modo) => {
         setCargando(true);
-        let url = '/games/popular?page=' + page;
+        const endpoint = modoActual === 'movies' ? '/movies/popular' : '/tv/popular';
+        let url = endpoint + '?page=' + page;
         if (filtros.genre) url += '&genre=' + filtros.genre;
         if (filtros.year) url += '&year=' + filtros.year;
-        if (filtros.platform) url += '&platform=' + filtros.platform;
+        if (filtros.sort) url += '&sort=' + filtros.sort;
 
         api.get(url)
             .then((respuesta) => {
-                setJuegos(respuesta.data.data);
-                setPaginaActual(page);
-                setTotalPaginas(Math.ceil(respuesta.data.total_results / 20));
+                setPeliculas(respuesta.data.data);
+                setPaginaActual(respuesta.data.current_page);
+                setTotalPaginas(respuesta.data.total_pages);
                 setCargando(false);
                 setBuscando(false);
             })
             .catch((error) => {
-                console.error("Error cargando juegos populares:", error);
+                console.error("Error:", error);
                 setCargando(false);
             });
     };
@@ -100,32 +103,31 @@ function Games() {
     const buscarContenido = (termino, page = 1) => {
         setBuscando(true);
         setCargando(true);
-        api.get(`/games/search?query=${termino}&page=${page}`)
+        const endpoint = modo === 'movies' ? '/movies/search' : '/tv/search';
+        api.get(endpoint + '?query=' + termino + '&page=' + page)
             .then((respuesta) => {
-                setJuegos(respuesta.data.data);
-                setPaginaActual(page);
-                setTotalPaginas(Math.ceil(respuesta.data.total_results / 20));
+                setPeliculas(respuesta.data.data);
+                setPaginaActual(respuesta.data.current_page);
+                setTotalPaginas(respuesta.data.total_pages);
                 setCargando(false);
             })
             .catch((error) => {
-                console.error("Error en la búsqueda de juegos:", error);
+                console.error("Error en la búsqueda:", error);
                 setCargando(false);
                 setBuscando(false);
             });
     };
 
-    // Debounce para la búsqueda en tiempo real
     useEffect(() => {
         const temporizador = setTimeout(() => {
             if (busqueda.trim() !== '') {
                 buscarContenido(busqueda, 1);
             } else {
-                cargarJuegos(paginaActual);
+                cargarPopulares(paginaActual, modo);
             }
         }, 500);
-
         return () => clearTimeout(temporizador);
-    }, [busqueda, filtros, paginaActual]);
+    }, [busqueda, modo, filtros, paginaActual]);
 
     const cambiarPagina = (nuevaPagina) => {
         if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
@@ -134,57 +136,79 @@ function Games() {
         }
     };
 
+    const estiloBotonModo = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 'bold', padding: '10px', transition: '0.3s' };
+
     return (
         <div style={{ textAlign: 'center', paddingTop: '0', paddingBottom: '40px' }}>
+            {/* SELECTORES DE MODO (PELIS / SERIES) */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '15px' }}>
+                <button 
+                    onClick={() => { setModo('movies'); setPaginaActual(1); setBusqueda(''); }}
+                    style={{ ...estiloBotonModo, borderBottom: modo === 'movies' ? '3px solid #e50914' : 'none', color: modo === 'movies' ? '#e50914' : 'white' }}
+                ><i className="fa-solid fa-film"></i> Películas</button>
+                <button 
+                    onClick={() => { setModo('tv'); setPaginaActual(1); setBusqueda(''); }}
+                    style={{ ...estiloBotonModo, borderBottom: modo === 'tv' ? '3px solid #e50914' : 'none', color: modo === 'tv' ? '#e50914' : 'white' }}
+                ><i className="fa-solid fa-tv"></i> Series</button>
+            </div>
+
             <h1 style={{ color: 'white', marginTop: '0', marginBottom: '10px', fontSize: '2.5rem' }}>
-                {buscando ? 'Resultados para: "' + busqueda + '"' : 'Videojuegos Populares'}
+                {buscando ? 'Resultados para: "' + busqueda + '"' : (modo === 'movies' ? 'Películas Populares' : 'Series Populares')}
             </h1>
 
             {/* FILTROS (ARRIBA) */}
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
-                <select
-                    value={filtros.genre}
-                    onChange={(e) => setFiltros({ ...filtros, genre: e.target.value })}
-                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
+                <select 
+                    value={filtros.genre} 
+                    onChange={(e) => setFiltros({...filtros, genre: e.target.value})}
+                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none', transition: 'all 0.3s' }}
                 >
-                    <option value="">Géneros IGDB</option>
-                    <option value="4">Acción</option>
-                    <option value="12">RPG (Rol)</option>
-                    <option value="5">Shooter</option>
-                    <option value="31">Aventura</option>
-                    <option value="10">Carreras</option>
-                    <option value="14">Deportes</option>
-                    <option value="32">Indie</option>
-                    <option value="15">Estrategia</option>
+                    <option value="">Todos los Géneros</option>
+                    {modo === 'movies' ? (
+                        <>
+                            <option value="28">Acción</option>
+                            <option value="12">Aventura</option>
+                            <option value="16">Animación</option>
+                            <option value="35">Comedia</option>
+                            <option value="18">Drama</option>
+                            <option value="27">Terror</option>
+                            <option value="878">Ciencia Ficción</option>
+                        </>
+                    ) : (
+                        <>
+                            <option value="10759">Acción y Aventura</option>
+                            <option value="16">Animación</option>
+                            <option value="35">Comedia</option>
+                            <option value="18">Drama</option>
+                            <option value="10765">Sci-Fi y Fantasía</option>
+                        </>
+                    )}
                 </select>
 
-                <select
-                    value={filtros.platform}
-                    onChange={(e) => setFiltros({ ...filtros, platform: e.target.value })}
+                <select 
+                    value={filtros.year} 
+                    onChange={(e) => setFiltros({...filtros, year: e.target.value})}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
-                    <option value="">Plataformas</option>
-                    <option value="6">PC (Windows)</option>
-                    <option value="167">PlayStation 5</option>
-                    <option value="169">Xbox Series X|S</option>
-                    <option value="130">Nintendo Switch</option>
-                    <option value="48">PlayStation 4</option>
-                </select>
-
-                <select
-                    value={filtros.year}
-                    onChange={(e) => setFiltros({ ...filtros, year: e.target.value })}
-                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
-                >
-                    <option value="">Año</option>
-                    {Array.from({ length: 45 }, (_, i) => 2026 - i).map(y => (
+                    <option value="">Todos los Años</option>
+                    {Array.from({length: 45}, (_, i) => 2025 - i).map(y => (
                         <option key={y} value={y}>{y}</option>
                     ))}
                 </select>
 
-                {(filtros.genre || filtros.year || filtros.platform) && (
-                    <button
-                        onClick={() => setFiltros({ genre: '', year: '', platform: '' })}
+                <select 
+                    value={filtros.sort} 
+                    onChange={(e) => setFiltros({...filtros, sort: e.target.value})}
+                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
+                >
+                    <option value="popularity.desc">Más Populares</option>
+                    <option value="vote_average.desc">Mejor Valoradas</option>
+                    <option value="primary_release_date.desc">Más Recientes</option>
+                </select>
+
+                {(filtros.genre || filtros.year || filtros.sort !== 'popularity.desc') && (
+                    <button 
+                        onClick={() => setFiltros({ genre: '', year: '', sort: 'popularity.desc' })}
                         style={{ padding: '12px 25px', borderRadius: '25px', border: 'none', backgroundColor: '#333', color: 'white', cursor: 'pointer', transition: 'background 0.3s' }}
                     >
                         Limpiar
@@ -200,7 +224,7 @@ function Games() {
                     </div>
                     <input
                         type="text"
-                        placeholder="Escribe para buscar juegos..."
+                        placeholder={modo === 'movies' ? "Escribe para buscar películas..." : "Escribe para buscar series..."}
                         value={busqueda}
                         onChange={(e) => setBusqueda(e.target.value)}
                         style={{ padding: '15px 45px 15px 55px', width: '100%', borderRadius: '50px', border: '2px solid #222', backgroundColor: '#000', color: 'white', outline: 'none', fontSize: '18px', transition: 'all 0.3s' }}
@@ -219,33 +243,24 @@ function Games() {
             </div>
 
             {cargando ? (
-                <div style={{ padding: '50px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
                     <motion.div
-                        animate={{
-                            scale: [1, 1.2, 1],
-                            rotate: [0, 90, 180, 270, 360]
-                        }}
-                        transition={{ repeat: Infinity, duration: 2 }}
-                        style={{ fontSize: '50px', color: '#4caf50' }}
+                        animate={{ rotate: [0, -10, 0] }}
+                        transition={{ repeat: Infinity, duration: 1 }}
+                        style={{ fontSize: '60px', color: '#e50914' }}
                     >
-                        <i className="fa-solid fa-gamepad"></i>
+                        <i className="fa-solid fa-clapperboard"></i>
                     </motion.div>
-                    <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: '200px' }}
-                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
-                        style={{ height: '10px', backgroundColor: '#4caf50', borderRadius: '5px', boxShadow: '0 0 10px #4caf50' }}
-                    />
-                    <h2 style={{ color: 'white', letterSpacing: '2px', textTransform: 'uppercase' }}>Cargando Nivel...</h2>
+                    <h2 style={{ color: 'white', letterSpacing: '3px', textTransform: 'uppercase', fontSize: '1.2rem' }}>Preparando la función...</h2>
                 </div>
             ) : (
                 <>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
-                        {juegos.map((juego) => (
+                        {peliculas.map((peli) => (
                             <div
-                                key={juego.id}
+                                key={peli.id}
                                 style={{
-                                    width: '200px', // Consistente con pelis/series
+                                    width: '200px',
                                     backgroundColor: '#1e1e1e',
                                     borderRadius: '8px',
                                     padding: '10px',
@@ -257,70 +272,60 @@ function Games() {
                                     cursor: 'pointer',
                                     transition: 'transform 0.2s'
                                 }}
-                                // AL CLICAR, VAMOS AL DETALLE DE TIPO "GAME"
-                                onClick={() => navigate(`/detalle/game/${juego.id}`)}
+                                onClick={() => navigate('/detalle/' + (modo === 'movies' ? 'movie' : 'tv') + '/' + peli.id)}
                                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                             >
                                 {/* BOTONES FLOTANTES INTERACCIÓN */}
                                 <button
-                                    onClick={(e) => toggleInteraccion(e, juego, 'jugado')}
+                                    onClick={(e) => toggleInteraccion(e, peli, 'visto')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '15px',
-                                        backgroundColor: jugados.includes(juego.id) ? '#4caf50' : 'rgba(0,0,0,0.6)',
-                                        border: jugados.includes(juego.id) ? 'none' : '1px solid white',
+                                        backgroundColor: vistos.includes(peli.id) ? '#4caf50' : 'rgba(0,0,0,0.6)',
+                                        border: vistos.includes(peli.id) ? 'none' : '1px solid white',
                                         borderRadius: '50%', width: '35px', height: '35px', color: 'white',
                                         cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         zIndex: 10, transition: 'all 0.3s ease'
                                     }}
-                                    title={jugados.includes(juego.id) ? "Quitar de Jugados" : "Marcar como Jugado"}
+                                    title={vistos.includes(peli.id) ? "Quitar de Vistos" : "Marcar como Visto"}
                                 >
-                                    {jugados.includes(juego.id) ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-gamepad"></i>}
+                                    {vistos.includes(peli.id) ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-eye"></i>}
                                 </button>
                                 <button
-                                    onClick={(e) => toggleInteraccion(e, juego, 'verMasTarde')}
+                                    onClick={(e) => toggleInteraccion(e, peli, 'verMasTarde')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '55px',
-                                        backgroundColor: verMasTarde.includes(juego.id) ? '#e50914' : 'rgba(0,0,0,0.6)',
-                                        border: verMasTarde.includes(juego.id) ? 'none' : '1px solid white',
+                                        backgroundColor: verMasTarde.includes(peli.id) ? '#e50914' : 'rgba(0,0,0,0.6)',
+                                        border: verMasTarde.includes(peli.id) ? 'none' : '1px solid white',
                                         borderRadius: '50%', width: '35px', height: '35px', color: 'white',
                                         cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         zIndex: 10, transition: 'all 0.3s ease'
                                     }}
-                                    title={verMasTarde.includes(juego.id) ? "Quitar de Jugar más tarde" : "Jugar más tarde"}
+                                    title={verMasTarde.includes(peli.id) ? "Quitar de Ver Más Tarde" : "Ver Más Tarde"}
                                 >
                                     <i className="fa-solid fa-clock"></i>
                                 </button>
 
                                 <div>
-                                    <div style={{ position: 'relative' }}>
-                                        <img src={juego.background_image ? juego.background_image : 'https://via.placeholder.com/500x750?text=No+Image'} alt={juego.name} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px' }} />
-                                    </div>
+                                    <img src={peli.poster_path ? 'https://image.tmdb.org/t/p/w500' + peli.poster_path : 'https://via.placeholder.com/500x750?text=No+Image'} alt={peli.title} style={{ width: '100%', borderRadius: '4px' }} />
                                     <h3 style={{ fontSize: '15px', margin: '12px 0 5px 0', lineHeight: '1.2' }}>
-                                        {juego.name} <span style={{ color: '#777', fontSize: '12px' }}>({juego.year})</span>
+                                        {peli.title} <span style={{ color: '#777', fontSize: '12px' }}>({peli.year})</span>
                                     </h3>
-                                    <p style={{ fontSize: '11px', color: '#999', margin: '0 0 10px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {juego.platforms}
-                                    </p>
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px', fontWeight: 'bold' }}>
-                                    {juego.metacritic ? (
-                                        <span style={{ color: '#66cc33', fontSize: '13px' }} title="Puntuación de la Crítica">
-                                            <i className="fa-solid fa-star"></i> {Number(juego.metacritic).toFixed(1)}
-                                        </span>
-                                    ) : <div></div>}
-
+                                    <span style={{ color: '#66cc33', fontSize: '0.85rem' }}>
+                                        <i className="fa-solid fa-star"></i> {peli.vote_average ? peli.vote_average.toFixed(1) : 'N/A'}
+                                    </span>
+                                    
                                     {/* NOTA PERSONAL (AZUL Y CHICA) */}
-                                    {valoraciones.find(v => v.api_id === juego.id) && (
+                                    {valoraciones.find(v => v.api_id === peli.id) && (
                                         <span style={{ color: '#2196f3', fontSize: '0.75rem', backgroundColor: 'rgba(33, 150, 243, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                                            {Number(valoraciones.find(v => v.api_id === juego.id).score).toFixed(1)}
+                                            {Number(valoraciones.find(v => v.api_id === peli.id).score).toFixed(1)}
                                         </span>
                                     )}
 
-                                    <span style={{ color: '#4caf50', fontSize: '13px' }} title="Puntuación MediaVerse">
-                                        <i className="fa-solid fa-users"></i> {juego.puntuacion_usuarios || '—'}
-                                    </span>
+                                    <span style={{ color: '#4caf50', fontSize: '0.85rem' }}><i className="fa-solid fa-users"></i> {peli.puntuacion_usuarios ? peli.puntuacion_usuarios : '-'}</span>
                                 </div>
                             </div>
                         ))}
@@ -331,15 +336,15 @@ function Games() {
                             <button onClick={() => cambiarPagina(paginaActual - 1)} disabled={paginaActual === 1} style={{ padding: '12px 25px', backgroundColor: paginaActual === 1 ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
                                 <i className="fa-solid fa-arrow-left"></i> Anterior
                             </button>
-
+                            
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1a1a1a', padding: '8px 15px', borderRadius: '30px', border: '1px solid #333' }}>
                                 <span style={{ color: '#888', fontSize: '14px' }}>Pág.</span>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    max={totalPaginas}
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max={totalPaginas} 
                                     defaultValue={paginaActual}
-                                    key={paginaActual} // Para que se resetee el valor si cambia desde fuera
+                                    key={paginaActual} 
                                     onBlur={(e) => {
                                         const valor = parseInt(e.target.value);
                                         if (valor && valor >= 1 && valor <= totalPaginas) {
@@ -369,21 +374,22 @@ function Games() {
                         </div>
                     )}
 
-                    {!cargando && juegos.length === 0 && (
+                    {!cargando && peliculas.length === 0 && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.5 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            style={{ padding: '80px 20px', textAlign: 'center' }}
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{ padding: '100px 20px', textAlign: 'center' }}
                         >
-                            <h1 style={{ fontSize: '5rem', color: '#e50914', textShadow: '0 0 20px rgba(229,9,20,0.8)', margin: 0 }}>GAME OVER</h1>
-                            <p style={{ color: '#888', fontSize: '1.5rem', marginBottom: '30px' }}>No se encontraron juegos en esta zona.</p>
+                            <i className="fa-solid fa-film" style={{ fontSize: '4rem', color: '#333', marginBottom: '20px' }}></i>
+                            <h1 style={{ fontSize: '3.5rem', color: 'white', fontWeight: 'bold', margin: 0 }}>FIN DE LA FUNCIÓN</h1>
+                            <p style={{ color: '#888', fontSize: '1.2rem', marginTop: '10px', marginBottom: '30px' }}>No hemos encontrado esa escena en nuestro archivo.</p>
                             <motion.button
-                                whileHover={{ scale: 1.1 }}
-                                whileTap={{ scale: 0.9 }}
+                                whileHover={{ scale: 1.05, backgroundColor: '#e50914' }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setBusqueda('')}
-                                style={{ padding: '12px 30px', borderRadius: '30px', border: '2px solid white', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.2rem' }}
+                                style={{ padding: '12px 35px', borderRadius: '30px', border: '1px solid #e50914', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}
                             >
-                                ¿CONTINUAR? (Presiona para Limpiar)
+                                REINTENTAR BÚSQUEDA
                             </motion.button>
                         </motion.div>
                     )}
@@ -393,4 +399,4 @@ function Games() {
     );
 }
 
-export default Games;
+export default MoviesSeries;

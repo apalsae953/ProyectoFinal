@@ -38,7 +38,7 @@ function Actor() {
     return (
       <div style={{ textAlign: 'center', padding: '100px', color: 'white' }}>
         <h2>No pudimos encontrar al actor.</h2>
-        <button onClick={() => navigate(-1)} style={{ marginTop: '20px', padding: '10px 20px', borderRadius: '5px', backgroundColor: '#e50914', color: 'white', border: 'none', cursor: 'pointer' }}>Volver</button>
+        <button onClick={() => navigate(-1)} className="btn-volver" style={{ marginTop: '20px', padding: '10px 20px', borderRadius: '5px', backgroundColor: '#e50914', color: 'white', border: 'none', cursor: 'pointer' }}>Volver</button>
       </div>
     );
   }
@@ -56,6 +56,7 @@ function Actor() {
         {/* BOTON VOLVER */}
         <button 
           onClick={() => navigate(-1)}
+          className="btn-volver"
           style={{ 
             position: 'absolute', top: '30px', left: '30px', zIndex: 100,
             background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.3)', 
@@ -66,6 +67,7 @@ function Actor() {
           <i className="fa-solid fa-arrow-left"></i> Volver
         </button>
 
+        {/* Imagen */}
         <div style={{ zIndex: 5, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}

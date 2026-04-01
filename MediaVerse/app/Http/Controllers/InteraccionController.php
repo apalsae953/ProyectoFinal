@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Interaccion;
 use App\Models\Medio;
+use App\Models\Valoracion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -17,10 +18,10 @@ class InteraccionController extends Controller
         // 1. Validamos los datos. Fíjate que diferenciamos el tipo de medio y el tipo de interacción
         $request->validate([
             'api_id' => 'required|integer',
-            'tipo_medio' => 'required|in:pelicula,videojuego',
+            'tipo_medio' => 'required|in:pelicula,videojuego,serie,movie,tv,game',
             'titulo' => 'required|string',
             'poster_path' => 'nullable|string',
-            'tipo_interaccion' => 'required|in:favorito,visto,pendiente' // Puedes añadir más estados si quieres
+            'tipo_interaccion' => 'required|in:favorito,visto,ver_mas_tarde'
         ]);
 
         try {
@@ -47,6 +48,12 @@ class InteraccionController extends Controller
                     'is_attached' => false // Le decimos a React que apague el corazón
                 ], 200);
             } else {
+                // Si ya existe otra interacción sobre el MISMO medio (ej: estaba en 'ver_mas_tarde' y cliquean 'visto'), 
+                // eliminamos cualquier interacción previa para que sean mutuamente exclusivas
+                Interaccion::where('user_id', $request->user()->id)
+                    ->where('medio_id', $medio->id)
+                    ->delete();
+
                 // Si no lo tenía, lo creamos (Click para añadir)
                 Interaccion::create([
                     'user_id' => $request->user()->id,
@@ -83,6 +90,13 @@ class InteraccionController extends Controller
 
         // Podríamos devolverlo tal cual, pero nivel Senior es agruparlo por "tipo" para React
         $agrupadas = $interacciones->groupBy('tipo');
+
+        // AÑADIDO: También cargamos todas sus valoraciones para poder pintarlas en las cards
+        $valoraciones = Valoracion::with('medio')
+            ->where('user_id', $request->user()->id)
+            ->get();
+        
+        $agrupadas['valoraciones'] = $valoraciones;
 
         return response()->json([
             'success' => true,
