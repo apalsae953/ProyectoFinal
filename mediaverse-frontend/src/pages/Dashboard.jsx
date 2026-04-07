@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function Dashboard() {
-  const [stats, setStats] = useState({ visto: 0, favorito: 0, pendiente: 0 });
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [trending, setTrending] = useState([]);
-  const [popularMovies, setPopularMovies] = useState([]);
-  const [popularSeries, setPopularSeries] = useState([]);
-  const [popularGames, setPopularGames] = useState([]);
-  const [latestThreads, setLatestThreads] = useState([]);
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [stats, setStats] = useState({ visto: 0, favorito: 0, pendiente: 0 }); // Estadísticas de actividad del usuario
+  const [loading, setLoading] = useState(true); // Control del estado de carga inicial
+  const [user, setUser] = useState(null); // Datos del usuario autenticado
+  const [trending, setTrending] = useState([]); // Contenido destacado (Hero)
+  const [popularMovies, setPopularMovies] = useState([]); // Últimas películas populares
+  const [popularSeries, setPopularSeries] = useState([]); // Series con mayor tendencia
+  const [popularGames, setPopularGames] = useState([]); // Videojuegos recomendados
+  const [latestThreads, setLatestThreads] = useState([]); // Actividad reciente en el foro
+  const [activeSlide, setActiveSlide] = useState(0); // Índice del carrusel superior
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,15 +26,15 @@ function Dashboard() {
           api.get('/movies/latest'),
           api.get('/tv/latest'),
           api.get('/games/latest'),
-          api.get('/threads')
+          api.get('/threads?dashboard=true')
         ]);
 
         if (resMovies.data.success) setPopularMovies(resMovies.data.data.slice(0, 10));
         if (resSeries.data.success) setPopularSeries(resSeries.data.data.slice(0, 10));
         if (resGames.data.success) setPopularGames(resGames.data.data.slice(0, 10));
-        if (resThreads.data.success) setLatestThreads(resThreads.data.data.slice(0, 4));
+        if (resThreads.data.success) setLatestThreads(resThreads.data.data);
 
-        // Combinar para una sección hero de "Tendencias Hot" (Ordenadas por novedad)
+        // Combinamos las novedades para la sección destacada (Hero)
         const hot = [
           ...(resMovies.data.data?.slice(0, 3).map(m => ({ ...m, type: 'movie' })) || []),
           ...(resSeries.data.data?.slice(0, 2).map(s => ({ ...s, type: 'tv' })) || []),
@@ -43,7 +43,7 @@ function Dashboard() {
         
         setTrending(hot);
 
-        // Obtener estadísticas del usuario si está identificado
+        // Si el usuario está logueado, obtenemos sus estadísticas de interacción
         const token = localStorage.getItem('auth_token');
         if (token) {
           const resInter = await api.get('/interactions/me');
@@ -52,7 +52,7 @@ function Dashboard() {
             setStats({
               visto: data.visto?.length || 0,
               favorito: data.favorito?.length || 0,
-              pendiente: data.pendiente?.length || 0
+              pendiente: data.ver_mas_tarde?.length || 0
             });
           }
         }
@@ -66,14 +66,14 @@ function Dashboard() {
     fetchData();
   }, []);
 
-  // Reproducción automática para el carrusel (Se reinicia al cambiar manualmente)
+  // Rotación automática del carrusel cada 10 segundos
   useEffect(() => {
     if (trending.length === 0) return;
     const interval = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % trending.length);
-    }, 10000); // 10 segundos
+    }, 10000); 
     return () => clearInterval(interval);
-  }, [trending, activeSlide]); // Al añadir activeSlide, el timer se reinicia en cada cambio manual
+  }, [trending, activeSlide]); // Reseteamos el intervalo si hay interacción manual para evitar saltos bruscos
 
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white' }}>
@@ -98,43 +98,40 @@ function Dashboard() {
               transition={{ duration: 1 }}
               style={{
                 position: 'absolute', width: '100%', height: '100%',
-                backgroundImage: `linear-gradient(to bottom, rgba(18,18,18,0.2) 0%, rgba(18,18,18,1) 95%), url(${trending[activeSlide].backdrop_path ? 'https://image.tmdb.org/t/p/original' + trending[activeSlide].backdrop_path : (trending[activeSlide].background_image || '')})`,
+                backgroundImage: 'linear-gradient(to bottom, rgba(18,18,18,0.2) 0%, rgba(18,18,18,1) 95%), url(' + (trending[activeSlide].backdrop_path ? 'https://image.tmdb.org/t/p/original' + trending[activeSlide].backdrop_path : (trending[activeSlide].background_image || '')) + ')',
                 backgroundSize: 'cover', backgroundPosition: 'center'
               }}
             >
-              <div style={{ position: 'absolute', bottom: '80px', left: '60px', maxWidth: '600px' }}>
-                <motion.span
-                  initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
-                  style={{ backgroundColor: '#e50914', padding: '5px 15px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px' }}
-                >
-                  Tendencia de Hoy
-                </motion.span>
-                <motion.h1
-                  initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
-                  style={{ fontSize: '4.5rem', margin: '20px 0', fontWeight: '900', lineHeight: '1', textShadow: '0 5px 15px rgba(0,0,0,0.5)' }}
-                >
-                  {trending[activeSlide].title || trending[activeSlide].name}
-                </motion.h1>
-                <motion.p
-                  initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
-                  style={{ fontSize: '1.2rem', opacity: 0.8, marginBottom: '30px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                >
-                  {trending[activeSlide].overview || trending[activeSlide].category_name || "Descubre todo sobre este título en Mediaverse."}
-                </motion.p>
-                <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.9 }} style={{ display: 'flex', gap: '15px' }}>
-                  <button
-                    onClick={() => navigate(`/detalle/${trending[activeSlide].type || 'movie'}/${trending[activeSlide].id}`)}
-                    style={{ padding: '12px 35px', backgroundColor: 'white', color: 'black', borderRadius: '30px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem' }}
+                <div className="hero-content" style={{ position: 'absolute', bottom: '80px', left: '60px', maxWidth: '600px' }}>
+                    <motion.span
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.3 }}
+                    style={{ backgroundColor: '#e50914', padding: '5px 15px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px' }}
                   >
-                    <i className="fa-solid fa-circle-info"></i> Ver Detalles
-                  </button>
-                  {user && (
-                    <button style={{ padding: '12px 20px', backgroundColor: 'rgba(255,255,255,0.1)', color: 'white', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
-                      <i className="fa-solid fa-plus"></i>
+                    Novedad destacada hoy en España
+                  </motion.span>
+                  <motion.h1
+                    className="hero-title"
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }}
+                    style={{ fontSize: '4.5rem', margin: '20px 0', fontWeight: '900', lineHeight: '1', textShadow: '0 5px 15px rgba(0,0,0,0.5)' }}
+                  >
+                    {trending[activeSlide].title || trending[activeSlide].name}
+                  </motion.h1>
+                  <motion.p
+                    className="hero-text"
+                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.7 }}
+                    style={{ fontSize: '1.2rem', opacity: 0.8, marginBottom: '30px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                  >
+                    {trending[activeSlide].overview || trending[activeSlide].category_name || "Descubre todo sobre este título en Mediaverse."}
+                  </motion.p>
+                  <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.9 }} style={{ display: 'flex', gap: '15px' }}>
+                    <button
+                      onClick={() => navigate('/detalle/' + (trending[activeSlide].type || 'movie') + '/' + trending[activeSlide].id)}
+                      style={{ padding: '12px 35px', backgroundColor: 'white', color: 'black', borderRadius: '30px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.1rem' }}
+                    >
+                      <i className="fa-solid fa-circle-info"></i> <span className="hide-on-mobile">Ver Detalles</span>
                     </button>
-                  )}
-                </motion.div>
-              </div>
+                  </motion.div>
+                </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -173,21 +170,37 @@ function Dashboard() {
         </button>
       </div>
 
-      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 40px' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div className="mobile-p-small" style={{ padding: '0 40px' }}>
 
         {/* 2. STATS & GREETING BAR */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '60px', backgroundColor: '#1a1a1a', padding: '25px 40px', borderRadius: '20px', border: '1px solid #333', backdropFilter: 'blur(20px)' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          flexWrap: 'wrap',
+          gap: '20px',
+          marginBottom: '60px', 
+          backgroundColor: '#1a1a1a', 
+          padding: '25px 40px', 
+          borderRadius: '20px', 
+          border: '1px solid #333', 
+          backdropFilter: 'blur(20px)' 
+        }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
-              {user ? `¡Qué bueno verte, ${user.name.split(' ')[0]}!` : '¡Únete a la comunidad!'}
+              {user ? '¡Qué bueno verte, ' + user.name.split(' ')[0] + '!' : '¡Únete a la comunidad!'}
             </h2>
             <p style={{ color: '#888', margin: '5px 0 0 0' }}>Explora lo último en cine, series y videojuegos.</p>
           </div>
           {user ? (
             <div style={{ display: 'flex', gap: '40px' }}>
-              <StatMini icon="fa-check" value={stats.visto} label="Vistos" color="#4caf50" />
-              <StatMini icon="fa-heart" value={stats.favorito} label="Favoritos" color="#e50914" />
-              <StatMini icon="fa-bookmark" value={stats.pendiente} label="Pendientes" color="#2196f3" />
+              <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <StatMini icon="fa-check" value={stats.visto} label="Vistos" color="#4caf50" />
+              </Link>
+              <Link to="/ver-mas-tarde" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <StatMini icon="fa-bookmark" value={stats.pendiente} label="Para más tarde" color="#2196f3" />
+              </Link>
             </div>
           ) : (
             <Link to="/auth" style={{ padding: '10px 25px', backgroundColor: '#e50914', color: 'white', borderRadius: '30px', fontWeight: 'bold', textDecoration: 'none' }}>Iniciar Sesión</Link>
@@ -195,28 +208,50 @@ function Dashboard() {
         </div>
 
         {/* 3. ROW: MOVIES */}
-        <SectionRow title="🔥 Películas que no te puedes perder" data={popularMovies} type="movie" />
+        <SectionRow
+          title={
+            <>
+              <i className="fa-solid fa-clapperboard" style={{ color: '#e50914' }}></i> Películas en cartelera (España)
+            </>
+          }
+          data={popularMovies}
+          type="movie"
+        />
 
         {/* 4. ROW: SERIES */}
-        <SectionRow title="📺 Series de las que todos hablan" data={popularSeries} type="tv" />
+        <SectionRow
+          title={
+            <>
+              <i className="fa-solid fa-tv" style={{ color: '#03a9f4' }}></i> Series de las que todos hablan
+            </>
+          }
+          data={popularSeries}
+          type="tv"
+        />
 
         {/* 5. COMMUNITY & GAMES GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px', marginTop: '60px', paddingBottom: '100px' }}>
+        <div className="mobile-stack grid-dashboard-layout" style={{ 
+          display: 'grid', 
+          gridTemplateColumns: '2fr 1fr', 
+          gap: '50px', 
+          marginTop: '60px', 
+          paddingBottom: '100px' 
+        }}>
 
           {/* GAMES LIST */}
           <div>
-            <h3 style={{ fontSize: '1.8rem', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <i className="fa-solid fa-gamepad" style={{ color: '#03a9f4' }}></i> Imprescindibles en Videojuegos
+            <h3 style={{ fontSize: '2rem', marginBottom: '35px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <i className="fa-solid fa-gamepad" style={{ color: 'green' }}></i> Imprescindibles en Videojuegos
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
               {popularGames.slice(0, 6).map(game => (
                 <motion.div
                   key={game.id}
-                  whileHover={{ y: -10 }}
-                  onClick={() => navigate(`/detalle/game/${game.id}`)}
-                  style={{ backgroundColor: '#1a1a1a', borderRadius: '15px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333' }}
+                  whileHover={{ y: -10, boxShadow: '0 15px 30px rgba(0,0,0,0.5)' }}
+                  onClick={() => navigate('/detalle/game/' + game.id)}
+                  style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333', transition: 'all 0.3s ease' }}
                 >
-                  <div style={{ height: '160px', backgroundImage: `url(${game.background_image})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div style={{ height: '220px', backgroundImage: 'url(' + game.background_image + ')', backgroundSize: 'cover', backgroundPosition: 'center' }} />
                   <div style={{ padding: '15px' }}>
                     <h4 style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '10px' }}>{game.name}</h4>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px', fontWeight: 'bold' }}>
@@ -235,19 +270,19 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* COMMUNITY FEED / NEWS */}
+          {/* FEED DE LA COMUNIDAD Y NOTICIAS */}
           <div>
             <h3 style={{ fontSize: '1.8rem', marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '15px' }}>
               <i className="fa-solid fa-newspaper" style={{ color: '#ffc107' }}></i> Novedades y Comunidad
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {latestThreads.length > 0 ? latestThreads.map(thread => (
-                <Link to={`/foro`} key={thread.id} style={{ textDecoration: 'none' }}>
+                <Link to={'/foro'} key={thread.id} style={{ textDecoration: 'none' }}>
                   <motion.div
                     whileHover={{ scale: 1.02, backgroundColor: '#222' }}
                     style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}
                   >
-                    <div style={{ fontSize: '12px', color: '#e50914', fontWeight: 'bold', marginBottom: '5px' }}>CUIDADORES DEL FORO</div>
+                    <div style={{ fontSize: '12px', color: '#e50914', fontWeight: 'bold', marginBottom: '5px' }}>TEMA CALIENTE</div>
                     <h4 style={{ color: 'white', margin: '5px 0', fontSize: '1.1rem' }}>{thread.titulo}</h4>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
                       <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#333', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{thread.user?.name?.[0]}</div>
@@ -257,22 +292,23 @@ function Dashboard() {
                 </Link>
               )) : (
                 <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#1a1a1a', borderRadius: '15px', color: '#666' }}>
-                  <p>Prepárate para las noticias...</p>
+                  <p>Aún no hay nada nuevo por aquí... ¡Date una vuelta más tarde!</p>
                 </div>
               )}
 
-              {/* QUICK NAVIGATION NEWS (SITE) */}
+              {/* ACCESO RÁPIDO A SECCIONES DEL SITIO */}
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 style={{ padding: '20px', borderRadius: '15px', background: 'linear-gradient(45deg, #e50914, #80060d)', marginTop: '10px' }}
               >
                 <h4 style={{ margin: 0 }}>¡Nueva sección de Actores!</h4>
-                <p style={{ margin: '10px 0 0 0', fontSize: '14px', opacity: 0.9 }}>Ahora puedes buscar a tus estrellas favoritas y ver su biografía completa.</p>
+                <p style={{ margin: '10px 0 0 0', fontSize: '14px', opacity: 0.9 }}>He añadido una sección para buscar actores y consultar su trayectoria profesional.</p>
                 <Link to="/actores" style={{ display: 'inline-block', marginTop: '15px', color: 'white', fontWeight: 'bold', textDecoration: 'none', borderBottom: '1px solid white' }}>Ir a buscar <i className="fa-solid fa-arrow-right"></i></Link>
               </motion.div>
             </div>
           </div>
 
+          </div>
         </div>
       </div>
     </div>
@@ -284,7 +320,7 @@ function StatMini({ icon, value, label, color }) {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-        <i className={`fa-solid ${icon}`} style={{ color, fontSize: '1.2rem' }}></i> {value}
+        <i className={'fa-solid ' + icon} style={{ color, fontSize: '1.2rem' }}></i> {value}
       </div>
       <div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '3px' }}>{label}</div>
     </div>
@@ -293,24 +329,63 @@ function StatMini({ icon, value, label, color }) {
 
 function SectionRow({ title, data, type }) {
   const navigate = useNavigate();
+  const scrollRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [moved, setMoved] = useState(false);
+
+  const onMouseDown = (e) => {
+    setIsDragging(true);
+    setMoved(false);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeft(scrollRef.current.scrollLeft);
+  };
+
+  const onMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const onMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 2; 
+    if (Math.abs(walk) > 5) setMoved(true);
+    scrollRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   return (
     <div style={{ marginBottom: '60px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-        <h3 style={{ fontSize: '1.8rem', fontWeight: '700', margin: 0 }}>{title}</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '10px' }}>
+        <h3 style={{ fontSize: 'min(1.8rem, 6vw)', fontWeight: '700', margin: 0 }}>{title}</h3>
         <Link to={type === 'movie' ? '/cine-y-series' : (type === 'tv' ? '/cine-y-series' : '/juegos')} style={{ color: '#e50914', textDecoration: 'none', fontWeight: 'bold', fontSize: '14px' }}>Ver todo <i className="fa-solid fa-arrow-right"></i></Link>
       </div>
-      <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px', scrollbarWidth: 'none' }} className="no-scrollbar">
+      <div 
+        ref={scrollRef}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
+        onMouseMove={onMouseMove}
+        style={{ 
+          display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px', scrollbarWidth: 'none',
+          cursor: isDragging ? 'grabbing' : 'grab', userSelect: 'none'
+        }} 
+        className="no-scrollbar"
+      >
         {data.map(item => (
           <motion.div
             key={item.id}
-            whileHover={{ scale: 1.05 }}
-            onClick={() => navigate(`/detalle/${type}/${item.id}`)}
-            style={{ minWidth: '180px', cursor: 'pointer' }}
+            whileHover={{ scale: moved ? 1 : 1.05 }}
+            onClick={() => {
+              if (!moved) navigate('/detalle/' + type + '/' + item.id);
+            }}
+            style={{ minWidth: '180px', cursor: moved ? 'grabbing' : 'pointer' }}
           >
             <img
               src={item.poster_path ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : (item.background_image || 'https://via.placeholder.com/500x750?text=No+Image')}
               alt={item.title || item.name}
-              style={{ width: '100%', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.4)', height: '270px', objectFit: 'cover' }}
+              style={{ width: '100%', borderRadius: '12px', boxShadow: '0 8px 20px rgba(0,0,0,0.4)', height: '270px', objectFit: 'cover', pointerEvents: 'none' }}
             />
             <h5 style={{ margin: '15px 0 5px 0', fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title || item.name}</h5>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', fontWeight: 'bold' }}>

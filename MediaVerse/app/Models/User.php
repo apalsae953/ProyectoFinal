@@ -29,6 +29,9 @@ class User extends Authenticatable
         'provider_id',
         'avatar',
         'bio',
+        'pelicula_favorita',
+        'serie_favorita',
+        'juego_favorito',
     ];
 
     /**
@@ -57,6 +60,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean', // Laravel lo tratará siempre como true/false
+            'pelicula_favorita' => 'json',
+            'serie_favorita' => 'json',
+            'juego_favorito' => 'json',
         ];
     }
 

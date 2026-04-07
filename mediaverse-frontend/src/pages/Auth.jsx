@@ -2,19 +2,43 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import api from '../services/api';
-import Swal from 'sweetalert2';
+import { alerts } from '../utils/swal';
 
 function Auth() {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', password_confirmation: '' });
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleForgotPassword = async () => {
+    const { value: email } = await alerts.prompt(
+      'Recuperar Contraseña',
+      'Introduce tu correo y te enviaremos instrucciones:',
+      'tu@email.com',
+      'Enviar enlace'
+    );
+
+    if (email) {
+      try {
+        await api.post('/password/forgot', { email });
+        alerts.success('¡Enviado! Revisa tu bandeja de entrada.');
+      } catch (err) {
+        alerts.error(err.response?.data?.message || 'No hemos podido enviar el correo.');
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!isLogin && formData.password !== formData.password_confirmation) {
+      alerts.error('Las contraseñas no coinciden.');
+      return;
+    }
+
     try {
       const endpoint = isLogin ? '/login' : '/register';
       const res = await api.post(endpoint, formData);
@@ -23,37 +47,19 @@ function Auth() {
         if (res.data.user) {
           localStorage.setItem('user_info', JSON.stringify(res.data.user));
         }
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'success',
-          title: isLogin ? '¡Hola de nuevo!' : '¡Cuenta creada!',
-          text: isLogin ? 'Has iniciado sesión' : 'Ya puedes empezar',
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true,
-          background: '#1e1e1e',
-          color: '#fff',
-          iconColor: '#e50914',
-        });
         window.dispatchEvent(new Event('auth_changed'));
+        alerts.success(isLogin ? '¡Hola de nuevo!' : '¡Cuenta creada!');
         navigate('/dashboard');
       }
     } catch (err) {
       console.error(err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: err.response?.data?.message || 'Revisa tus credenciales e inténtalo de nuevo.',
-        background: '#1e1e1e',
-        color: 'white',
-      });
+      alerts.error(err.response?.data?.message || 'Revisa tus datos e inténtalo de nuevo.');
     }
   };
 
   const handleSocialLogin = (provider) => {
     // Redirige al endpoint de Laravel que a su vez redirige al proveedor
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth/${provider}/redirect`;
+    window.location.href = import.meta.env.VITE_API_URL + '/auth/' + provider + '/redirect';
   };
 
   return (
@@ -119,10 +125,29 @@ function Auth() {
             required
             style={{ padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#333', color: 'white' }}
           />
+          {!isLogin && (
+            <input
+              type="password"
+              name="password_confirmation"
+              placeholder="Confirmar Contraseña"
+              value={formData.password_confirmation}
+              onChange={handleChange}
+              required
+              style={{ padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#333', color: 'white' }}
+            />
+          )}
           <button type="submit" style={{ padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}>
             {isLogin ? 'Entrar' : 'Registrarse'}
           </button>
         </form>
+
+        {isLogin && (
+          <p style={{ textAlign: 'center', marginTop: '15px' }}>
+            <span onClick={handleForgotPassword} style={{ color: '#888', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}>
+              ¿Has olvidado tu contraseña?
+            </span>
+          </p>
+        )}
 
         <div style={{ margin: '20px 0', textAlign: 'center', color: '#888' }}>O continúa con</div>
 

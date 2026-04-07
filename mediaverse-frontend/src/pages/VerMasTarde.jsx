@@ -4,14 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 function VerMasTarde() {
-    const [verMasTarde, setVerMasTarde] = useState([]);
-    const [cargando, setCargando] = useState(true);
+    const [verMasTarde, setVerMasTarde] = useState([]); // Lista de medios guardados para ver más tarde
+    const [cargando, setCargando] = useState(true); // Estado de carga de la página
     
-    // Estados para Filtros y Búsqueda
+    // Búsqueda y filtrado
     const [search, setSearch] = useState('');
     const [filterTipo, setFilterTipo] = useState('todos');
     
-    // Paginación
+    // Configuración de paginación (12 elementos por página)
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 12;
 
@@ -19,22 +19,23 @@ function VerMasTarde() {
 
     useEffect(() => {
         if(!localStorage.getItem('auth_token')) {
-            navigate('/auth');
+            navigate('/auth'); // Redirigir si el usuario no está autenticado
             return;
         }
 
+        // Obtener interacciones marcadas como "ver más tarde"
         api.get('/interactions/me').then(res => {
             if(res.data.data.ver_mas_tarde) {
                 setVerMasTarde(res.data.data.ver_mas_tarde);
             }
             setCargando(false);
         }).catch(err => {
-            console.error("Error cargando ver más tarde:", err);
+            console.error("Error al cargar la lista de pendientes:", err);
             setCargando(false);
         });
     }, [navigate]);
 
-    // Filtrar por búsqueda y tipo
+    // Filtrar los elementos según título y tipo de medio
     const filteredItems = verMasTarde.filter(item => {
         const matchesSearch = item.medio.titulo.toLowerCase().includes(search.toLowerCase());
         const matchesTipo = filterTipo === 'todos' || item.medio.tipo === filterTipo;
@@ -44,7 +45,7 @@ function VerMasTarde() {
     // Calcular Paginación
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
     
-    // Evitar estar en una página vacía si se filtra
+    // Si filtramos y nos quedamos en una página que ya no existe, volvemos a la 1
     useEffect(() => {
         if (currentPage > totalPages && totalPages > 0) {
             setCurrentPage(1);
@@ -56,6 +57,8 @@ function VerMasTarde() {
         currentPage * ITEMS_PER_PAGE
     );
 
+    const totalVerMasTarde = verMasTarde.length;
+
     return (
         <div style={{ padding: '40px 20px', color: 'white', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -63,7 +66,7 @@ function VerMasTarde() {
                     <i className="fa-solid fa-clock" style={{color: '#e50914', marginRight: '15px'}}></i> 
                     Ver Más Tarde
                 </h2>
-                <p style={{ color: '#aaa', fontSize: '1.2rem', margin: 0 }}>Todo el contenido que has guardado para disfrutar en el futuro.</p>
+                <p style={{ color: '#aaa', fontSize: '1.2rem', margin: 0 }}>Todo el contenido que has guardado para disfrutar en el futuro. Total:  <span style={{ color: '#e50914', fontWeight: 'bold' }}>{totalVerMasTarde}</span> elementos.</p>
             </div>
             
             {/* BARRA DE BÚSQUEDA Y FILTROS */}
@@ -126,7 +129,7 @@ function VerMasTarde() {
                                 whileHover={{ y: -10, boxShadow: '0 20px 40px rgba(0,0,0,0.8)', borderColor: '#e50914' }}
                                 onClick={() => {
                                     const tipoUrl = item.medio.tipo === 'videojuego' ? 'game' : (item.medio.tipo === 'pelicula' ? 'movie' : 'tv');
-                                    navigate(`/detalle/${tipoUrl}/${item.medio.api_id}`);
+                                    navigate('/detalle/' + tipoUrl + '/' + item.medio.api_id);
                                 }}
                             >
                                 <div style={{ position: 'relative' }}>
@@ -135,7 +138,7 @@ function VerMasTarde() {
                                         alt={item.medio.titulo} 
                                         style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover' }} 
                                     />
-                                    {/* Badge flotante de tipo */}
+                                    {/* Etiqueta para saber qué es cada cosa */}
                                     <div style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
                                         {item.medio.tipo === 'videojuego' ? <><i className="fa-solid fa-gamepad" style={{color: '#4caf50', marginRight: '5px'}}></i> Videojuego</> : item.medio.tipo === 'pelicula' ? <><i className="fa-solid fa-film" style={{color: '#e50914', marginRight: '5px'}}></i> Película</> : <><i className="fa-solid fa-tv" style={{color: '#2196f3', marginRight: '5px'}}></i> Serie</>}
                                     </div>

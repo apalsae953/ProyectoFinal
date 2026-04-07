@@ -41,4 +41,22 @@ class RespuestaHiloController extends Controller
             'data' => $respuesta
         ], 201);
     }
+
+    /**
+     * ELIMINAR UNA RESPUESTA (Solo el autor)
+     */
+    public function destroy(Request $request, $id)
+    {
+        $respuesta = RespuestaHilo::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->first();
+
+        if (!$respuesta) {
+            return response()->json(['success' => false, 'message' => 'Respuesta no encontrada o no tienes permiso.'], 403);
+        }
+
+        $respuesta->delete();
+
+        return response()->json(['success' => true, 'message' => 'Comentario eliminado.']);
+    }
 }

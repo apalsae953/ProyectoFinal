@@ -2,6 +2,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { alerts } from '../utils/swal';
+
+const av = (u) => u?.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u?.name || 'U') + '&background=e50914&color=fff&size=80';
 
 function Detalle() {
   const { tipo, id } = useParams();
@@ -10,17 +13,10 @@ function Detalle() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const [esVerMasTarde, setEsVerMasTarde] = useState(false);
+  const [esVisto, setEsVisto] = useState(false);
   const [showRankingModal, setShowRankingModal] = useState(false);
   const [misRankings, setMisRankings] = useState([]);
   const [loadingRankings, setLoadingRankings] = useState(false);
-  
-  // Función para obtener link directo a la plataforma (SÓLO PARA JUEGOS)
-  const getDirectLink = (providerId, providerName, movieTitle) => {
-    // ... no lo usaremos para pelis pero lo dejamos para orden si hiciera falta ...
-    const encodedTitle = encodeURIComponent(movieTitle);
-    const encodedProvider = encodeURIComponent(providerName);
-    return `https://www.google.com/search?q=ver+${encodedTitle}+en+${encodedProvider}`;
-  };
 
   // Estados para Reseñas
   const [showReviewsModal, setShowReviewsModal] = useState(false);
@@ -35,18 +31,24 @@ function Detalle() {
   useEffect(() => {
     if(localStorage.getItem('auth_token') && datos) {
         api.get('/interactions/me').then(res => {
-            if(res.data.data.ver_mas_tarde) {
-                const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-                const isFav = res.data.data.ver_mas_tarde.some(
+            const data = res.data.data;
+            const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
+            
+            if(data.ver_mas_tarde) {
+                setEsVerMasTarde(data.ver_mas_tarde.some(
                     fav => fav.medio?.tipo === dbTipo && String(fav.medio?.api_id) === String(datos.id)
-                );
-                setEsVerMasTarde(isFav);
+                ));
             }
-        }).catch(err => console.error("Error al cargar ver más tarde del detalle:", err));
+            if(data.visto) {
+                setEsVisto(data.visto.some(
+                    v => v.medio?.tipo === dbTipo && String(v.medio?.api_id) === String(datos.id)
+                ));
+            }
+        }).catch(err => console.error("Error al cargar interacciones:", err));
 
         // Cargar mi nota (para mostrar en el hero sin abrir modal)
         const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-        api.get(`/reviews/${dbTipo}/${datos.id}/auth`).then(res => {
+        api.get('/reviews/' + dbTipo + '/' + datos.id + '/auth').then(res => {
             const userInfo = JSON.parse(localStorage.getItem('user_info'));
             if (userInfo && res.data.data) {
                 const mine = res.data.data.find(r => r.user_id === userInfo.id);
@@ -64,7 +66,7 @@ function Detalle() {
 
   const toggleVerMasTarde = () => {
     if (!localStorage.getItem('auth_token')) {
-        import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Debes iniciar sesión para hacer esto', showConfirmButton: false, timer: 2500, background: '#1e1e1e', color: '#fff', iconColor: '#e50914' }));
+        alerts.loginRequired(navigate, 'Debes iniciar sesión');
         return;
     }
 
@@ -79,6 +81,9 @@ function Detalle() {
         titulo: datos.title || datos.name,
         poster_path: datos.poster_path || datos.background_image || '',
         tipo_interaccion: 'ver_mas_tarde'
+    }).then(res => {
+        // Aseguramos la exclusividad si el backend tuvo éxito (aunque ya lo hicimos optimista)
+        if(res.data.is_attached) setEsVisto(false);
     }).catch(err => {
         console.error("Error toggling ver más tarde:", err);
         // Si hay error, revertimos el botón
@@ -86,9 +91,35 @@ function Detalle() {
     });
   };
 
+  const toggleVisto = () => {
+    if (!localStorage.getItem('auth_token')) {
+        alerts.loginRequired(navigate, 'Debes iniciar sesión');
+        return;
+    }
+
+    // Actualización optimista
+    setEsVisto(prev => !prev);
+    if(!esVisto) setEsVerMasTarde(false); // Si marcamos como visto, quitamos de ver más tarde
+
+    const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
+
+    api.post('/interactions/toggle', {
+        api_id: datos.id,
+        tipo_medio: dbTipo,
+        titulo: datos.title || datos.name,
+        poster_path: datos.poster_path || datos.background_image || '',
+        tipo_interaccion: 'visto'
+    }).then(res => {
+        if(res.data.is_attached) setEsVerMasTarde(false);
+    }).catch(err => {
+        console.error("Error toggling visto:", err);
+        setEsVisto(prev => !prev);
+    });
+  };
+
   const abrirModalRanking = async () => {
     if (!localStorage.getItem('auth_token')) {
-        import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Debes iniciar sesión para hacer esto', showConfirmButton: false, timer: 2500, background: '#1e1e1e', color: '#fff', iconColor: '#e50914' }));
+        alerts.loginRequired(navigate, 'Debes iniciar sesión');
         return;
     }
     setShowRankingModal(true);
@@ -117,7 +148,7 @@ function Detalle() {
     try {
         const token = localStorage.getItem('auth_token');
         const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-        const endpoint = token ? `/reviews/${dbTipo}/${datos.id}/auth` : `/reviews/${dbTipo}/${datos.id}`;
+        const endpoint = token ? '/reviews/' + dbTipo + '/' + datos.id + '/auth' : '/reviews/' + dbTipo + '/' + datos.id;
         
         const res = await api.get(endpoint);
         const data = res.data.data;
@@ -144,11 +175,11 @@ function Detalle() {
 
   const handleSaveReview = async () => {
     if (!localStorage.getItem('auth_token')) {
-        import('sweetalert2').then(Swal => Swal.default.fire({ icon: 'warning', title: 'Login requerido', text: 'Inicia sesión para puntuar.', background: '#1e1e1e', color: '#fff' }));
+        alerts.loginRequired(navigate, 'Login requerido');
         return;
     }
     if (userRating === 0) {
-        import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Debes elegir una puntuación', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+        alerts.error('Debes elegir una puntuación');
         return;
     }
 
@@ -163,10 +194,13 @@ function Detalle() {
             puntuacion: userRating,
             comentario: userComment
         });
+        localStorage.getItem('auth_token'); // side effect
         setEsVerMasTarde(false);
+        setEsVisto(true);
         setMyRating(userRating); // Actualizar nota en el Hero
-        import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Puntuado!', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+        alerts.success('¡Puntuado!');
         fetchReviews();
+        fetchDatos(false); // Actualizar nota media sin F5
     } catch (err) {
         console.error(err);
     }
@@ -175,26 +209,17 @@ function Detalle() {
 
   const handleDeleteReview = async () => {
     if (!myReview) return;
-    const confirm = await import('sweetalert2').then(Swal => Swal.default.fire({
-        title: '¿Eliminar tu reseña?',
-        text: "No podrás recuperar el comentario.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e50914',
-        cancelButtonColor: '#333',
-        confirmButtonText: 'Sí, eliminar',
-        background: '#1e1e1e',
-        color: '#fff'
-    }));
+    const confirm = await alerts.confirm('¿Eliminar tu reseña?', 'No podrás recuperar el comentario.', 'Sí, eliminar');
 
     if (confirm.isConfirmed) {
         try {
-            await api.delete(`/reviews/${myReview.id}`);
+            await api.delete('/reviews/' + myReview.id);
             setMyReview(null);
             setMyRating(null); // Borrar nota del Hero
             setUserRating(0);
             setUserComment('');
             fetchReviews();
+            fetchDatos(false); // Actualizar nota media sin F5
         } catch (err) { console.error(err); }
     }
   };
@@ -202,34 +227,38 @@ function Detalle() {
   const handleVote = async (reviewId, type) => {
     if (!localStorage.getItem('auth_token')) return;
     try {
-        await api.post(`/reviews/${reviewId}/vote`, { type });
+        await api.post('/reviews/' + reviewId + '/vote', { type });
         fetchReviews();
     } catch (err) {
         if (err.response?.status === 403) {
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'info', title: 'No puedes votar tu propia reseña', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+            alerts.info('No puedes votar tu propia reseña');
         }
     }
   };
 
-  useEffect(() => {
-    setCargando(true);
+  const fetchDatos = async (showLoading = false) => {
+    if (showLoading) setCargando(true);
     setError(false);
-
     let endpoint = '';
-    if (tipo === 'movie') endpoint = `/movies/${id}`;
-    else if (tipo === 'tv') endpoint = `/tv/${id}`;
-    else if (tipo === 'game') endpoint = `/games/${id}`;
+    if (tipo === 'movie') endpoint = '/movies/' + id;
+    else if (tipo === 'tv') endpoint = '/tv/' + id;
+    else if (tipo === 'game') endpoint = '/games/' + id;
 
-    api.get(endpoint)
-      .then((respuesta) => {
+    try {
+        const respuesta = await api.get(endpoint);
         setDatos(respuesta.data.data);
-        setCargando(false);
-      })
-      .catch((err) => {
-        console.error("Error al cargar detalle:", err);
-        setError(true);
-        setCargando(false);
-      });
+    } catch (err) {
+        if (showLoading) {
+            console.error("Error al cargar detalle:", err);
+            setError(true);
+        }
+    } finally {
+        if (showLoading) setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDatos(true);
   }, [tipo, id]);
 
   if (cargando) {
@@ -253,11 +282,11 @@ function Detalle() {
 
   const backdrop = tipo === 'game'
     ? datos.backdrop_path
-    : (datos.backdrop_path ? `https://image.tmdb.org/t/p/original${datos.backdrop_path}` : null);
+    : (datos.backdrop_path ? 'https://image.tmdb.org/t/p/original' + datos.backdrop_path : null);
 
   const poster = tipo === 'game'
     ? datos.poster_path
-    : (datos.poster_path ? `https://image.tmdb.org/t/p/w500${datos.poster_path}` : 'https://via.placeholder.com/500x750?text=No+Image');
+    : (datos.poster_path ? 'https://image.tmdb.org/t/p/w500' + datos.poster_path : 'https://via.placeholder.com/500x750?text=No+Image');
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: 'white', minHeight: '100vh' }}>
@@ -271,7 +300,7 @@ function Detalle() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1 }}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: `url(${backdrop})`, backgroundSize: 'cover', backgroundPosition: 'center 20%', filter: 'brightness(0.3)', zIndex: 0 }}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'url(' + backdrop + ')', backgroundSize: 'cover', backgroundPosition: 'center 20%', filter: 'brightness(0.3)', zIndex: 0 }}
           />
         )}
         
@@ -350,11 +379,20 @@ function Detalle() {
               <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} style={{ display: 'flex', gap: '15px', marginTop: '45px', flexWrap: 'wrap' }}>
                 <motion.button 
                   onClick={toggleVerMasTarde}
-                  whileHover={{ scale: 1.05, boxShadow: esVerMasTarde ? '0 8px 30px rgba(100, 100, 100, 0.4)' : '0 8px 30px rgba(229, 9, 20, 0.4)' }} 
+                  whileHover={{ scale: 1.05, boxShadow: esVerMasTarde ? '0 8px 30px rgba(229, 9, 20, 0.4)' : '0 8px 30px rgba(229, 9, 20, 0.4)' }} 
                   whileTap={{ scale: 0.95 }}
-                  style={{ padding: '15px 35px', borderRadius: '12px', border: esVerMasTarde ? '1px solid rgba(255,255,255,0.4)' : 'none', backgroundColor: esVerMasTarde ? 'rgba(0,0,0,0.6)' : '#e50914', color: 'white', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: esVerMasTarde ? 'blur(10px)' : 'none', transition: 'background-color 0.3s' }}
+                  style={{ padding: '15px 35px', borderRadius: '12px', border: esVerMasTarde ? 'none' : '1px solid rgba(255,255,255,0.4)', backgroundColor: esVerMasTarde ? '#e50914' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)', transition: 'background-color 0.3s' }}
                 >
-                  <i className={`fa-solid ${esVerMasTarde ? 'fa-circle-xmark' : 'fa-clock'}`}></i> {esVerMasTarde ? (tipo === 'game' ? 'QUITAR DE JUGAR MÁS TARDE' : 'QUITAR DE VER MÁS TARDE') : (tipo === 'game' ? 'JUGAR MÁS TARDE' : 'VER MÁS TARDE')}
+                  <i className={'fa-solid ' + (esVerMasTarde ? 'fa-circle-xmark' : 'fa-clock')}></i> {esVerMasTarde ? (tipo === 'game' ? 'QUITAR DE JUGAR MÁS TARDE' : 'QUITAR DE VER MÁS TARDE') : (tipo === 'game' ? 'JUGAR MÁS TARDE' : 'VER MÁS TARDE')}
+                </motion.button>
+
+                <motion.button 
+                  onClick={toggleVisto}
+                  whileHover={{ scale: 1.05, boxShadow: esVisto ? '0 8px 30px rgba(100, 100, 100, 0.4)' : '0 8px 30px rgba(76, 175, 80, 0.4)' }} 
+                  whileTap={{ scale: 0.95 }}
+                  style={{ padding: '15px 35px', borderRadius: '12px', border: esVisto ? '1px solid rgba(255,255,255,0.4)' : 'none', backgroundColor: esVisto ? '#4caf50' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)', transition: 'background-color 0.3s' }}
+                >
+                  <i className={'fa-solid ' + (esVisto ? 'fa-check' : (tipo === 'game' ? 'fa-gamepad' : 'fa-eye'))}></i> {esVisto ? (tipo === 'game' ? 'JUGADO' : 'VISTO') : (tipo === 'game' ? 'MARCAR COMO JUGADO' : 'MARCAR COMO VISTO')}
                 </motion.button>
 
                 <motion.button 
@@ -428,7 +466,7 @@ function Detalle() {
                         <h4 style={{ margin: '0 0 15px 0', color: '#888', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', fontWeight: '900' }}>Disponible en Suscripción</h4>
                         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                           {datos.donde_ver.streaming.map(p => (
-                            <img key={p.provider_id} src={`https://image.tmdb.org/t/p/original${p.logo_path}`} title={p.provider_name} alt={p.provider_name} style={{ width: '60px', height: '60px', borderRadius: '15px', border: '1px solid #333', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }} />
+                            <img key={p.provider_id} src={'https://image.tmdb.org/t/p/original' + p.logo_path} title={p.provider_name} alt={p.provider_name} style={{ width: '60px', height: '60px', borderRadius: '15px', border: '1px solid #333', boxShadow: '0 10px 20px rgba(0,0,0,0.3)' }} />
                           ))}
                         </div>
                       </div>
@@ -438,7 +476,7 @@ function Detalle() {
                         <h4 style={{ margin: '0 0 15px 0', color: '#888', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '2px', fontWeight: '900' }}>Alquiler / Compra</h4>
                         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
                           {datos.donde_ver.alquiler.map(p => (
-                            <img key={p.provider_id} src={`https://image.tmdb.org/t/p/original${p.logo_path}`} title={p.provider_name} alt={p.provider_name} style={{ width: '45px', height: '45px', borderRadius: '12px', opacity: 0.6, grayscale: 1 }} />
+                            <img key={p.provider_id} src={'https://image.tmdb.org/t/p/original' + p.logo_path} title={p.provider_name} alt={p.provider_name} style={{ width: '45px', height: '45px', borderRadius: '12px', opacity: 0.6, grayscale: 1 }} />
                           ))}
                         </div>
                       </div>
@@ -457,8 +495,8 @@ function Detalle() {
             <h2 style={{ borderLeft: '5px solid #e50914', paddingLeft: '20px', marginBottom: '25px', fontSize: '2rem' }}>Reparto Principal</h2>
             <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
               {datos.cast.map((actor) => (
-                <div key={actor.id} onClick={() => navigate(`/actor/${actor.id}`)} style={{ width: '140px', textAlign: 'center', cursor: 'pointer' }}>
-                  <motion.img whileHover={{ scale: 1.05 }} src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : 'https://via.placeholder.com/185x278?text=Actor'} alt={actor.name} style={{ width: '100%', borderRadius: '15px', marginBottom: '10px' }} />
+                <div key={actor.id} onClick={() => navigate('/actor/' + actor.id)} style={{ width: '140px', textAlign: 'center', cursor: 'pointer' }}>
+                  <motion.img whileHover={{ scale: 1.05 }} src={actor.profile_path ? 'https://image.tmdb.org/t/p/w185' + actor.profile_path : 'https://via.placeholder.com/185x278?text=Actor'} alt={actor.name} style={{ width: '100%', borderRadius: '15px', marginBottom: '10px' }} />
                   <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0' }}>{actor.name}</p>
                   <p style={{ fontSize: '12px', color: '#888' }}>{actor.character}</p>
                 </div>
@@ -570,13 +608,13 @@ function Detalle() {
                     <div style={{ padding: '0 40px', overflowY: 'auto' }}>
                         {loadingReviews ? (
                             <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}><i className="fa-solid fa-spinner fa-spin fa-3x" style={{color:'#e50914'}}></i></div>
-                        ) : reviews.length > 0 ? (
+                        ) : reviews.filter(r => r.comentario && r.comentario.trim() !== '').length > 0 ? (
                             <div style={{ padding: '30px 0' }}>
-                                {reviews.map((rev, i) => (
+                                {reviews.filter(r => r.comentario && r.comentario.trim() !== '').map((rev, i) => (
                                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} key={rev.id} style={{ backgroundColor: '#1c1c1c', padding: '25px', borderRadius: '20px', marginBottom: '20px', border: rev.user_id === myReview?.user_id ? '1px solid #e50914' : '1px solid #2a2a2a' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#e50914', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold', fontSize: '1.2rem' }}>{rev.user?.name.charAt(0)}</div>
+                                                <img src={av(rev.user)} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #333' }} />
                                                 <div>
                                                     <div style={{fontWeight:'bold'}}>{rev.user?.name} {rev.user_id === myReview?.user_id && <span style={{color:'#e50914', fontSize:'0.7rem', marginLeft:'5px'}}>(TÚ)</span>}</div>
                                                     <div style={{fontSize:'0.8rem', color:'#666'}}>{new Date(rev.created_at).toLocaleDateString()}</div>
@@ -600,7 +638,7 @@ function Detalle() {
                         ) : (
                             <div style={{ textAlign: 'center', padding: '100px 40px' }}>
                                 <i className="fa-solid fa-comment-slash fa-4x" style={{ color: '#2a2a2a', marginBottom: '20px' }}></i>
-                                <h3 style={{ color: '#555' }}>Nadie ha escrito una reseña todavía.</h3>
+                                <h3 style={{ color: '#555' }}>Nadie ha escrito un comentario todavía.</h3>
                                 <p style={{ color: '#444' }}>¡Sé el primero en compartir tu opinión!</p>
                             </div>
                         )}

@@ -35,10 +35,14 @@ Route::get('/games/{id}', [MedioController::class, 'getGameDetail']);
 Route::get('/actor/{id}', [MedioController::class, 'getActorDetail']);
 Route::get('/actors/popular', [MedioController::class, 'getPopularActors']);
 Route::get('/actors/search', [MedioController::class, 'searchActors']);
+Route::get('/anime/popular', [MedioController::class, 'getAnimeMixed']);
+Route::get('/anime/search', [MedioController::class, 'searchAnimeMixed']);
 
 // --- Autenticación ---
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword']);
+Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 
 // --- Autenticación Social (OAuth) ---
 Route::get('/auth/{provider}/redirect', [AuthController::class, 'redirectToProvider']);
@@ -69,23 +73,28 @@ Route::middleware('auth:sanctum')->group(function () {
     // Cerrar sesión
     Route::post('/logout', [AuthController::class, 'logout']);
     
-    // Trivia: Guardar puntuación
+    // Trivia: Guardar puntuación y ver récords
     Route::post('/trivia/{id}/score', [TriviaController::class, 'guardarPuntuacion']);
+    Route::get('/trivia/my-scores', [TriviaController::class, 'getBestScores']);
     
     // Valoraciones: Dejar una reseña o puntuación
     Route::post('/reviews', [ValoracionController::class, 'store']);
     Route::post('/reviews/{id}/vote', [ValoracionController::class, 'toggleVote']);
     Route::delete('/reviews/{id}', [ValoracionController::class, 'destroy']);
+    Route::get('/user/reviews', [ValoracionController::class, 'misResenas']);
 
     // Alternar (Añadir/Quitar) interacción
     Route::post('/interactions/toggle', [InteraccionController::class, 'toggle']);
     
     // Ver mis listas (Favoritos, Pendientes...)
     Route::get('/interactions/me', [InteraccionController::class, 'misInteracciones']);
+    Route::put('/interactions/{id}/date', [InteraccionController::class, 'updateDate']);
     
     // RUTAS DEL FORO (Crear y Comentar)
     Route::post('/threads', [HiloController::class, 'store']); // Crear un nuevo hilo
     Route::post('/threads/{hilo_id}/replies', [RespuestaHiloController::class, 'store']); // Responder a un hilo
+    Route::delete('/replies/{id}', [RespuestaHiloController::class, 'destroy']); // Eliminar un comentario propio
+    Route::delete('/threads/{id}', [HiloController::class, 'destroy']); // Eliminar un hilo propio
     
     // Perfil de Usuario
     Route::get('/profile', [ProfileController::class, 'show']);

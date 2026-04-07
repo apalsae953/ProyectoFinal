@@ -54,8 +54,8 @@ class ValoracionController extends Controller
                 'tipo' => 'visto'
             ]);
 
-            // Cargamos el nombre del usuario para devolverlo a React
-            $valoracion->load('user:id,name');
+            // Cargamos los datos del usuario para mostrarlos en el frontend
+            $valoracion->load('user:id,name,avatar');
 
             return response()->json([
                 'success' => true,
@@ -87,7 +87,8 @@ class ValoracionController extends Controller
 
         // Si existe, traemos todas sus valoraciones con el nombre del autor y votos.
         // Hacemos una carga manual de likes/dislikes para que sea eficiente.
-        $valoraciones = Valoracion::with(['user:id,name', 'votes'])
+        // Obtenemos las valoraciones con autor (incluyendo avatar) y votos
+        $valoraciones = Valoracion::with(['user:id,name,avatar', 'votes'])
             ->where('medio_id', $medio->id)
             ->get()
             ->map(function ($val) use ($request) {
@@ -156,6 +157,28 @@ class ValoracionController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => $message]);
+    }
+
+    /**
+     * OBTENER TODAS LAS RESEÑAS DEL USUARIO AUTENTICADO
+     */
+    public function misResenas(Request $request)
+    {
+        $valoraciones = Valoracion::with(['medio', 'votes'])
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->get()
+            ->map(function ($val) {
+                $val->likes_count = $val->votes->where('type', 'like')->count();
+                $val->dislikes_count = $val->votes->where('type', 'dislike')->count();
+                unset($val->votes);
+                return $val;
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $valoraciones
+        ], 200);
     }
 
     /**

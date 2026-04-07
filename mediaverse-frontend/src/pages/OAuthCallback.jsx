@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import { alerts } from '../utils/swal';
 
 function OAuthCallback() {
   const navigate = useNavigate();
@@ -14,28 +14,10 @@ function OAuthCallback() {
       console.log("Token captured from URL:", token);
       localStorage.setItem('auth_token', token);
       window.dispatchEvent(new Event('auth_changed'));
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'success',
-        title: '¡Bienvenido!',
-        text: 'Sesión iniciada correctamente',
-        showConfirmButton: false,
-        timer: 4000,
-        timerProgressBar: true,
-        background: '#1e1e1e',
-        color: '#fff',
-        iconColor: '#e50914',
-      });
+      alerts.success('¡Bienvenido!');
       navigate('/dashboard');
     } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error de Autenticación',
-        text: 'No se pudo iniciar sesión con la red social.',
-        background: '#1e1e1e',
-        color: 'white',
-      });
+      alerts.error('No se pudo iniciar sesión con la red social.');
       navigate('/auth');
     }
   }, [location, navigate]);

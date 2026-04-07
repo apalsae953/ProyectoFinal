@@ -12,7 +12,7 @@ function Actor() {
 
   useEffect(() => {
     setCargando(true);
-    api.get(`/actor/${id}`)
+    api.get('/actor/' + id)
       .then(res => {
         setActor(res.data.data);
         setCargando(false);
@@ -75,7 +75,7 @@ function Actor() {
             transition={{ type: 'spring', damping: 15 }}
           >
             <img 
-              src={actor.profile_path ? `https://image.tmdb.org/t/p/h632${actor.profile_path}` : 'https://via.placeholder.com/300x450?text=Actor'} 
+              src={actor.profile_path ? 'https://image.tmdb.org/t/p/h632' + actor.profile_path : 'https://via.placeholder.com/300x450?text=Actor'} 
               style={{ width: '220px', height: '220px', borderRadius: '50%', objectFit: 'cover', border: '4px solid #e50914', boxShadow: '0 0 40px rgba(229, 9, 20, 0.5)', marginBottom: '25px' }}
             />
           </motion.div>
@@ -114,13 +114,13 @@ function Actor() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
             {actor.filmography.map((item) => (
               <motion.div 
-                key={`${item.tipo}-${item.id}`}
+                key={item.tipo + '-' + item.id}
                 whileHover={{ y: -10 }}
-                onClick={() => navigate(`/detalle/${item.tipo}/${item.id}`)}
+                onClick={() => navigate('/detalle/' + item.tipo + '/' + item.id)}
                 style={{ width: '180px', cursor: 'pointer', backgroundColor: '#1e1e1e', borderRadius: '15px', overflow: 'hidden', transition: 'box-shadow 0.3s' }}
               >
                 <img 
-                  src={item.poster_path ? `https://image.tmdb.org/t/p/w342${item.poster_path}` : 'https://via.placeholder.com/180x270?text=No+Poster'} 
+                  src={item.poster_path ? 'https://image.tmdb.org/t/p/w342' + item.poster_path : 'https://via.placeholder.com/180x270?text=No+Poster'} 
                   style={{ width: '100%', height: '250px', objectFit: 'cover' }}
                 />
                 <div style={{ padding: '12px' }}>

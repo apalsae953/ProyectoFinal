@@ -8,24 +8,28 @@ function SearchActors() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
 
   useEffect(() => {
     if (query.trim() === '') {
-      fetchPopularActors();
+      fetchPopularActors(paginaActual);
       return;
     }
     const delayDebounceFn = setTimeout(() => {
-      searchActors();
+      searchActors(paginaActual);
     }, 600);
     return () => clearTimeout(delayDebounceFn);
-  }, [query]);
+  }, [query, paginaActual]);
 
-  const fetchPopularActors = async () => {
+  const fetchPopularActors = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await api.get('/actors/popular');
+      const res = await api.get('/actors/popular?page=' + page);
       if (res.data.success) {
         setActors(res.data.data);
+        setTotalPaginas(res.data.total_pages || 1);
+        setPaginaActual(res.data.current_page || 1);
       }
     } catch (err) {
       console.error("Error al cargar actores populares:", err);
@@ -34,17 +38,26 @@ function SearchActors() {
     }
   };
 
-  const searchActors = async () => {
+  const searchActors = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await api.get(`/actors/search?query=${query}`);
+      const res = await api.get('/actors/search?query=' + query + '&page=' + page);
       if (res.data.success) {
         setActors(res.data.data);
+        setTotalPaginas(res.data.total_pages || 1);
+        setPaginaActual(res.data.current_page || 1);
       }
     } catch (err) {
       console.error("Error al buscar actores:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cambiarPagina = (nueva) => {
+    if (nueva >= 1 && nueva <= totalPaginas) {
+      setPaginaActual(nueva);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -62,11 +75,11 @@ function SearchActors() {
             Explora el estrellato
           </span>
           <h1 style={{ fontSize: '3.5rem', margin: '15px 0', fontWeight: '800', background: 'linear-gradient(to right, #fff, #888)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {query ? `Busqueda: ${query}` : 'Actores Populares'}
+            {query ? 'Busqueda: ' + query : 'Actores Populares'}
           </h1>
           <p style={{ color: '#aaa', maxWidth: '600px', margin: '0 auto', fontSize: '1.1rem', lineHeight: '1.6' }}>
             {query 
-              ? `Hemos encontrado estos talentos que coinciden con "${query}".` 
+              ? 'Hemos encontrado estos talentos que coinciden con "' + query + '".'
               : 'Descubre a las figuras más influyentes del cine y la televisión en la actualidad.'}
           </p>
         </motion.div>
@@ -80,7 +93,10 @@ function SearchActors() {
             type="text" 
             placeholder="Escribe el nombre de una estrella..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPaginaActual(1);
+            }}
             style={{ 
               padding: '18px 25px 18px 60px', 
               width: '100%', 
@@ -149,7 +165,7 @@ function SearchActors() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: index * 0.03, duration: 0.4 }}
                   whileHover={{ y: -10 }}
-                  onClick={() => navigate(`/actor/${actor.id}`)}
+                  onClick={() => navigate('/actor/' + actor.id)}
                   style={{ 
                     position: 'relative',
                     backgroundColor: '#1a1a1a', 
@@ -163,7 +179,7 @@ function SearchActors() {
                   {/* IMAGEN DEL ACTOR */}
                   <div style={{ position: 'relative', width: '100%', height: '320px', overflow: 'hidden' }}>
                     <img 
-                      src={actor.profile_path ? `https://image.tmdb.org/t/p/w500${actor.profile_path}` : 'https://via.placeholder.com/500x750?text=Sin+Foto'} 
+                      src={actor.profile_path ? 'https://image.tmdb.org/t/p/w500' + actor.profile_path : 'https://via.placeholder.com/500x750?text=Sin+Foto'} 
                       alt={actor.name} 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease' }}
                     />
@@ -201,8 +217,45 @@ function SearchActors() {
             <p style={{ color: '#666' }}>Prueba con otro nombre o revisa la ortografía.</p>
           </div>
         )}
+        {/* PAGINACIÓN */}
+        {!loading && actors.length > 0 && totalPaginas > 1 && (
+          <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px' }}>
+            <button 
+              onClick={() => cambiarPagina(paginaActual - 1)} 
+              disabled={paginaActual === 1}
+              style={{ 
+                padding: '12px 30px', 
+                backgroundColor: paginaActual === 1 ? '#333' : '#e50914', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '50px', 
+                cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', 
+                fontWeight: 'bold', 
+                transition: '0.3s' 
+              }}
+            >
+              <i className="fa-solid fa-chevron-left"></i> Anterior
+            </button>
+            <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>Página {paginaActual} {totalPaginas > 1 ? 'de ' + totalPaginas : ''}</span>
+            <button 
+              onClick={() => cambiarPagina(paginaActual + 1)} 
+              disabled={paginaActual === totalPaginas}
+              style={{ 
+                padding: '12px 30px', 
+                backgroundColor: paginaActual === totalPaginas ? '#333' : '#e50914', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '50px', 
+                cursor: paginaActual === totalPaginas ? 'not-allowed' : 'pointer', 
+                fontWeight: 'bold', 
+                transition: '0.3s' 
+              }}
+            >
+              Siguiente <i className="fa-solid fa-chevron-right"></i>
+            </button>
+          </div>
+        )}
       </div>
-
     </div>
   );
 }

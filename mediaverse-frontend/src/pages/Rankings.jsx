@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
-import Swal from 'sweetalert2';
+import { alerts } from '../utils/swal';
 import { useNavigate } from 'react-router-dom';
 
 function Rankings() {
@@ -96,7 +96,7 @@ function Rankings() {
         e.stopPropagation();
         
         if (!isLogged) {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Inicia sesión para dar like', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' });
+            alerts.loginRequired(navigate, 'Inicia sesión para dar like');
             return;
         }
 
@@ -105,14 +105,14 @@ function Rankings() {
             try {
                 const userInfo = JSON.parse(userInfoStr);
                 if (String(userInfo.id) === String(ranking_user_id)) {
-                     Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: '¡Es tu propio ranking!', text: 'El autor no puede darse like', showConfirmButton: false, timer: 1500, background: '#1e1e1e', color: '#fff' });
+                     alerts.info('¡Es tu propio ranking!', 'El autor no puede darse like');
                      return;
                 }
             } catch(error) { console.error(error); }
         }
 
         try {
-            const res = await api.post(`/rankings/${ranking_id}/like`);
+            const res = await api.post('/rankings/' + ranking_id + '/like');
             setRankings(prev => prev.map(r => {
                 if(r.id === ranking_id) {
                     return {
@@ -132,24 +132,17 @@ function Rankings() {
         e.preventDefault();
         try {
             const res = await api.post('/rankings', nuevoRanking);
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'Ranking creado exitosamente', showConfirmButton: false, timer: 3000,
-                background: '#1e1e1e', color: '#fff', iconColor: '#28a745'
-            });
+            alerts.success('Ranking creado exitosamente');
             setShowModal(false);
             setNuevoRanking({ titulo: '', descripcion: '', tipo: 'mixed', is_public: true });
             
             if (res.data && res.data.ranking && res.data.ranking.id) {
-                navigate(`/rankings/${res.data.ranking.id}`);
+                navigate('/rankings/' + res.data.ranking.id);
             } else {
                 fetchMisRankings();
             }
         } catch (err) {
-            Swal.fire({
-                icon: 'error', title: 'Error', text: 'No se pudo crear el ranking.',
-                background: '#1e1e1e', color: '#fff'
-            });
+            alerts.error('No se pudo crear el ranking.');
         }
     };
 
@@ -159,17 +152,17 @@ function Rankings() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ scale: 1.02, y: -5 }}
-            onClick={() => navigate(`/rankings/${r.id}`)}
+            onClick={() => navigate('/rankings/' + r.id)}
             style={{ 
                 backgroundColor: '#1e1e1e', padding: '25px', borderRadius: '15px', 
-                borderLeft: `5px solid ${r.tipo === 'movies' ? '#e50914' : r.tipo === 'series' ? '#4caf50' : r.tipo === 'games' ? '#2196f3' : '#9c27b0'}`,
+                borderLeft: '5px solid ' + (r.tipo === 'movies' ? '#e50914' : r.tipo === 'series' ? '#4caf50' : r.tipo === 'games' ? '#2196f3' : '#9c27b0'),
                 cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
             }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <h3 style={{ margin: 0, fontSize: '1.4rem' }}>{r.titulo}</h3>
                 <span style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>
-                    <i className={`fa-solid ${tipoIcon[r.tipo]}`}></i> {tipoText[r.tipo]}
+                    <i className={'fa-solid ' + tipoIcon[r.tipo]}></i> {tipoText[r.tipo]}
                 </span>
             </div>
             
@@ -177,7 +170,7 @@ function Rankings() {
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <img src={r.user?.avatar || `https://ui-avatars.com/api/?name=${r.user?.name}&background=random`} alt={r.user?.name} style={{ width: '25px', height: '25px', borderRadius: '50%' }} />
+                    <img src={r.user?.avatar || 'https://ui-avatars.com/api/?name=' + r.user?.name + '&background=random'} alt={r.user?.name} style={{ width: '25px', height: '25px', borderRadius: '50%' }} />
                     <span style={{ fontSize: '13px', color: '#ccc' }}>{r.user?.name}</span>
                 </div>
                 
@@ -206,7 +199,7 @@ function Rankings() {
                         >
                             <motion.i 
                                 whileTap={{ scale: 1.5 }} 
-                                className={`${r.is_liked ? 'fa-solid' : 'fa-regular'} fa-heart`}
+                                className={(r.is_liked ? 'fa-solid' : 'fa-regular') + ' fa-heart'}
                             ></motion.i> 
                             <span>{r.likes_count || 0}</span>
                         </div>
@@ -234,7 +227,7 @@ function Rankings() {
                 <button 
                     onClick={() => {
                         if (!isLogged) {
-                            Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Debes iniciar sesión para ver tus rankings', showConfirmButton: false, timer: 2500, background: '#1e1e1e', color: '#fff' });
+                            alerts.loginRequired(navigate, 'Debes iniciar sesión');
                             return;
                         }
                         setTab('mis');

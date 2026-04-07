@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -14,11 +15,11 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        // 1. Validamos los datos que nos envía React
+        // 1. Validamos los datos que nos envía React (Añadimos confirmación)
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8',
+            'password' => 'required|string|min:8|confirmed', // 'confirmed' busca password_confirmation
         ]);
 
         // 2. Creamos el usuario en la base de datos
@@ -155,5 +156,74 @@ class AuthController extends Controller
             $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
             return redirect($frontendUrl . '/login?error=social_auth_failed');
         }
+    }
+
+    /**
+     * RECUPERACIÓN DE CONTRASEÑA (ENVÍO DE EMAIL)
+     */
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+        
+        $user = User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            // Por seguridad, no decimos si el email existe o no (evitamos data mining)
+            return response()->json([
+                'success' => true,
+                'message' => 'Si el correo existe en nuestra base de datos, recibirás un enlace pronto.'
+            ]);
+        }
+
+        // 2. Usamos el 'broker' oficial de Laravel para generar el token y enviar el email
+        $status = Password::broker()->sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Enlace de recuperación enviado correctamente. Revisa tu correo.'
+            ]);
+        }
+
+        // Si falla, devolvemos el error específico de Laravel para que sepas qué falta
+        return response()->json([
+            'success' => false,
+            'message' => __($status) // Muestra el error real
+        ], 400);
+    }
+
+    /**
+     * RESETEO FINAL DE CONTRASEÑA
+     */
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Contraseña actualizada correctamente.'
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => __($status)
+        ], 400);
     }
 }

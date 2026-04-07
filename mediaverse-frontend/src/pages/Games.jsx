@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
+import { alerts } from '../utils/swal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function Games() {
@@ -20,7 +20,8 @@ function Games() {
     const [filtros, setFiltros] = useState({
         genre: '',
         year: '',
-        platform: ''
+        platform: '',
+        sort: 'rating_count' // Popularidad por defecto
     });
 
     const [favoritos, setFavoritos] = useState([]);
@@ -35,12 +36,12 @@ function Games() {
                 if(data.valoraciones) setValoraciones(data.valoraciones.filter(v => v.medio?.tipo === 'videojuego').map(v => ({api_id: Number(v.medio?.api_id), score: v.puntuacion})));
             }).catch(console.error);
         }
-    }, [cargando]); // Actualiza post carga inicial
+    }, []); // Carga inicial de interacciones
 
     const toggleInteraccion = (e, juego, tipoLogico) => {
         e.stopPropagation();
         if (!localStorage.getItem('auth_token')) {
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Debes iniciar sesión para hacer esto', showConfirmButton: false, timer: 2500, background: '#1e1e1e', color: '#fff', iconColor: '#e50914' }));
+            alerts.loginRequired(navigate);
             return;
         }
 
@@ -72,7 +73,6 @@ function Games() {
             tipo_interaccion: tipoSql
         }).catch(err => {
             console.error("Error guardando interacción:", err);
-            // Podríamos hacer rollback aquí, pero raramente falla si está autenticado
         });
     };
 
@@ -82,6 +82,7 @@ function Games() {
         if (filtros.genre) url += '&genre=' + filtros.genre;
         if (filtros.year) url += '&year=' + filtros.year;
         if (filtros.platform) url += '&platform=' + filtros.platform;
+        if (filtros.sort) url += '&sort=' + filtros.sort;
 
         api.get(url)
             .then((respuesta) => {
@@ -100,7 +101,7 @@ function Games() {
     const buscarContenido = (termino, page = 1) => {
         setBuscando(true);
         setCargando(true);
-        api.get(`/games/search?query=${termino}&page=${page}`)
+        api.get('/games/search?query=' + termino + '&page=' + page)
             .then((respuesta) => {
                 setJuegos(respuesta.data.data);
                 setPaginaActual(page);
@@ -118,7 +119,7 @@ function Games() {
     useEffect(() => {
         const temporizador = setTimeout(() => {
             if (busqueda.trim() !== '') {
-                buscarContenido(busqueda, 1);
+                buscarContenido(busqueda, paginaActual);
             } else {
                 cargarJuegos(paginaActual);
             }
@@ -144,7 +145,10 @@ function Games() {
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
                 <select
                     value={filtros.genre}
-                    onChange={(e) => setFiltros({ ...filtros, genre: e.target.value })}
+                    onChange={(e) => {
+                        setFiltros({ ...filtros, genre: e.target.value });
+                        setPaginaActual(1);
+                    }}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
                     <option value="">Géneros IGDB</option>
@@ -160,7 +164,10 @@ function Games() {
 
                 <select
                     value={filtros.platform}
-                    onChange={(e) => setFiltros({ ...filtros, platform: e.target.value })}
+                    onChange={(e) => {
+                        setFiltros({ ...filtros, platform: e.target.value });
+                        setPaginaActual(1);
+                    }}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
                     <option value="">Plataformas</option>
@@ -173,8 +180,11 @@ function Games() {
 
                 <select
                     value={filtros.year}
-                    onChange={(e) => setFiltros({ ...filtros, year: e.target.value })}
-                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
+                    onChange={(e) => {
+                        setFiltros({ ...filtros, year: e.target.value });
+                        setPaginaActual(1);
+                    }}
+                    style={{ padding: '12px 20px', borderRadius: '30px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
                     <option value="">Año</option>
                     {Array.from({ length: 45 }, (_, i) => 2026 - i).map(y => (
@@ -182,9 +192,25 @@ function Games() {
                     ))}
                 </select>
 
-                {(filtros.genre || filtros.year || filtros.platform) && (
+                {/* SELECTOR DE ORDEN - NUEVO */}
+                <select
+                    value={filtros.sort}
+                    onChange={(e) => {
+                        setFiltros({ ...filtros, sort: e.target.value });
+                        setPaginaActual(1);
+                    }}
+                    style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
+                >
+                    <option value="rating_count">Más Populares</option>
+                    <option value="rating">Mejor Valorados</option>
+                </select>
+
+                {(filtros.genre || filtros.year || filtros.platform || filtros.sort !== 'rating_count') && (
                     <button
-                        onClick={() => setFiltros({ genre: '', year: '', platform: '' })}
+                        onClick={() => {
+                            setFiltros({ genre: '', year: '', platform: '', sort: 'rating_count' });
+                            setPaginaActual(1);
+                        }}
                         style={{ padding: '12px 25px', borderRadius: '25px', border: 'none', backgroundColor: '#333', color: 'white', cursor: 'pointer', transition: 'background 0.3s' }}
                     >
                         Limpiar
@@ -202,7 +228,10 @@ function Games() {
                         type="text"
                         placeholder="Escribe para buscar juegos..."
                         value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
+                        onChange={(e) => {
+                            setBusqueda(e.target.value);
+                            setPaginaActual(1);
+                        }}
                         style={{ padding: '15px 45px 15px 55px', width: '100%', borderRadius: '50px', border: '2px solid #222', backgroundColor: '#000', color: 'white', outline: 'none', fontSize: '18px', transition: 'all 0.3s' }}
                         onFocus={(e) => (e.target.style.borderColor = '#e50914')}
                         onBlur={(e) => (e.target.style.borderColor = '#222')}
@@ -240,12 +269,11 @@ function Games() {
                 </div>
             ) : (
                 <>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
+                    <div className="responsive-grid" style={{ padding: '0 20px' }}>
                         {juegos.map((juego) => (
                             <div
                                 key={juego.id}
                                 style={{
-                                    width: '200px', // Consistente con pelis/series
                                     backgroundColor: '#1e1e1e',
                                     borderRadius: '8px',
                                     padding: '10px',
@@ -255,10 +283,11 @@ function Games() {
                                     justifyContent: 'space-between',
                                     position: 'relative',
                                     cursor: 'pointer',
-                                    transition: 'transform 0.2s'
+                                    transition: 'transform 0.2s',
+                                    width: '100%'
                                 }}
                                 // AL CLICAR, VAMOS AL DETALLE DE TIPO "GAME"
-                                onClick={() => navigate(`/detalle/game/${juego.id}`)}
+                                onClick={() => navigate('/detalle/game/' + juego.id)}
                                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                                 onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                             >
@@ -291,17 +320,13 @@ function Games() {
                                 >
                                     <i className="fa-solid fa-clock"></i>
                                 </button>
-
                                 <div>
                                     <div style={{ position: 'relative' }}>
                                         <img src={juego.background_image ? juego.background_image : 'https://via.placeholder.com/500x750?text=No+Image'} alt={juego.name} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px' }} />
                                     </div>
-                                    <h3 style={{ fontSize: '15px', margin: '12px 0 5px 0', lineHeight: '1.2' }}>
+                                    <h3 style={{ fontSize: '15px', margin: '12px 0 5px 0', lineHeight: '1.2', height: '40px', overflow: 'hidden' }}>
                                         {juego.name} <span style={{ color: '#777', fontSize: '12px' }}>({juego.year})</span>
                                     </h3>
-                                    <p style={{ fontSize: '11px', color: '#999', margin: '0 0 10px 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {juego.platforms}
-                                    </p>
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px', fontWeight: 'bold' }}>

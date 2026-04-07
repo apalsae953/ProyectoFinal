@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 class InteraccionController extends Controller
 {
     /**
-     * ALTERNAR UNA INTERACCIÓN (Añadir/Quitar Favorito, Visto, etc.)
+     * Alternar el estado de una interacción (Favoritos, Vistos, Ver más tarde)
      */
     public function toggle(Request $request)
     {
-        // 1. Validamos los datos. Fíjate que diferenciamos el tipo de medio y el tipo de interacción
+        // Validación de los datos de entrada
         $request->validate([
             'api_id' => 'required|integer',
             'tipo_medio' => 'required|in:pelicula,videojuego,serie,movie,tv,game',
@@ -25,19 +25,19 @@ class InteraccionController extends Controller
         ]);
 
         try {
-            // 2. Buscamos el Medio en nuestra DB o lo creamos
+            // Obtener o registrar el Medio en la base de datos
             $medio = Medio::firstOrCreate(
                 ['api_id' => $request->api_id, 'tipo' => $request->tipo_medio],
                 ['titulo' => $request->titulo, 'poster_path' => $request->poster_path]
             );
 
-            // 3. Buscamos si el usuario YA tiene esta interacción con este medio
+            // Verificar si el usuario ya tiene esta interacción registrada
             $interaccionExistente = Interaccion::where('user_id', $request->user()->id)
                 ->where('medio_id', $medio->id)
                 ->where('tipo', $request->tipo_interaccion)
                 ->first();
 
-            // 4. Lógica de INTERRUPTOR (Toggle)
+            // Lógica de alternancia (Delete si existe, Create si no)
             if ($interaccionExistente) {
                 // Si ya lo tenía en favoritos, lo borramos (Click para quitar)
                 $interaccionExistente->delete();
@@ -45,16 +45,20 @@ class InteraccionController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Eliminado de ' . $request->tipo_interaccion,
-                    'is_attached' => false // Le decimos a React que apague el corazón
+                    'is_attached' => false // Desactivación del estado en el frontend
                 ], 200);
             } else {
-                // Si ya existe otra interacción sobre el MISMO medio (ej: estaba en 'ver_mas_tarde' y cliquean 'visto'), 
-                // eliminamos cualquier interacción previa para que sean mutuamente exclusivas
-                Interaccion::where('user_id', $request->user()->id)
-                    ->where('medio_id', $medio->id)
-                    ->delete();
+                // Lógica de EXCLUSIVIDAD: Visto vs Ver Más Tarde
+                // Favorito es independiente y no debe borrar nada.
+                if ($request->tipo_interaccion === 'visto' || $request->tipo_interaccion === 'ver_mas_tarde') {
+                    $opuesto = $request->tipo_interaccion === 'visto' ? 'ver_mas_tarde' : 'visto';
+                    Interaccion::where('user_id', $request->user()->id)
+                        ->where('medio_id', $medio->id)
+                        ->where('tipo', $opuesto)
+                        ->delete();
+                }
 
-                // Si no lo tenía, lo creamos (Click para añadir)
+                // Creamos la nueva interacción
                 Interaccion::create([
                     'user_id' => $request->user()->id,
                     'medio_id' => $medio->id,
@@ -78,20 +82,20 @@ class InteraccionController extends Controller
     }
 
     /**
-     * OBTENER LAS LISTAS DEL USUARIO (Perfil)
+     * Obtener listado de interacciones agrupadas del usuario
      */
     public function misInteracciones(Request $request)
     {
-        // Traemos las interacciones del usuario y cargamos los datos del medio (título, poster)
+        // Obtener interacciones ordenadas por fecha de creación
         $interacciones = Interaccion::with('medio')
             ->where('user_id', $request->user()->id)
             ->latest()
             ->get();
 
-        // Podríamos devolverlo tal cual, pero nivel Senior es agruparlo por "tipo" para React
+        // Agrupamos por tipo (favorito, visto, ver_mas_tarde) para el frontend
         $agrupadas = $interacciones->groupBy('tipo');
 
-        // AÑADIDO: También cargamos todas sus valoraciones para poder pintarlas en las cards
+        // Incluir valoraciones del usuario para mostrar puntuaciones en las miniaturas
         $valoraciones = Valoracion::with('medio')
             ->where('user_id', $request->user()->id)
             ->get();
@@ -102,5 +106,40 @@ class InteraccionController extends Controller
             'success' => true,
             'data' => $agrupadas
         ], 200);
+    }
+
+    /**
+     * ACTUALIZAR LA FECHA DE UNA INTERACCIÓN
+     * Permite al usuario modificar manualmente cuándo vio o jugó un título.
+     */
+    public function updateDate(Request $request, $id)
+    {
+        // Validamos que la fecha tenga un formato correcto
+        $request->validate([
+            'fecha' => 'required|date'
+        ]);
+
+        try {
+            // Buscamos la interacción asegurándonos de que pertenezca al usuario autenticado
+            $interaccion = Interaccion::where('id', $id)
+                ->where('user_id', $request->user()->id)
+                ->firstOrFail();
+
+            // Actualizamos el timestamp de creación para reflejar la nueva fecha
+            $interaccion->created_at = $request->fecha;
+            $interaccion->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Fecha de visualización actualizada correctamente.'
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error al actualizar fecha de interacción: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudo actualizar la fecha.'
+            ], 500);
+        }
     }
 }

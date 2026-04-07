@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, Reorder } from 'framer-motion';
 import api from '../services/api';
-import Swal from 'sweetalert2';
+import { alerts } from '../utils/swal';
 
 function RankingDetail() {
     const { id } = useParams();
@@ -39,40 +39,28 @@ function RankingDetail() {
 
     const handleEditSave = async () => {
         if (!editData.titulo.trim()) {
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'error', title: 'El título es requerido', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+            notify('El título es requerido', 'error');
             return;
         }
         try {
-            await api.put(`/rankings/${id}`, editData);
+            await api.put('/rankings/' + id, editData);
             setRanking({ ...ranking, ...editData });
             setIsEditing(false);
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Ranking actualizado', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+            alerts.success('Ranking actualizado');
         } catch (err) {
-            import('sweetalert2').then(Swal => Swal.default.fire({ icon: 'error', title: 'Error', text: 'No se pudo actualizar', background: '#1e1e1e', color: '#fff' }));
+            alerts.error('No se pudo actualizar el ranking');
         }
     };
 
     const handleEliminarRanking = async () => {
-        const confirm = await Swal.fire({
-            title: '¿Eliminar ranking entero?',
-            text: "¡Esta acción es irreversible! Se borrarán todos los elementos guardados.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#e50914',
-            cancelButtonColor: '#333',
-            confirmButtonText: 'Sí, borrar ranking',
-            cancelButtonText: 'Cancelar',
-            background: '#1e1e1e',
-            color: '#fff'
-        });
-
+        const confirm = await alerts.confirm('¿Eliminar ranking entero?', '¡Esta acción es irreversible! Se borrarán todos los elementos guardados.', 'Sí, borrar ranking');
         if (confirm.isConfirmed) {
             try {
-                await api.delete(`/rankings/${id}`);
-                import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Ranking eliminado', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+                await api.delete('/rankings/' + id);
+                alerts.success('Ranking eliminado');
                 navigate('/rankings');
             } catch (err) {
-                import('sweetalert2').then(Swal => Swal.default.fire({ icon: 'error', title: 'Error', text: 'No se pudo eliminar el ranking', background: '#1e1e1e', color: '#fff' }));
+                alerts.error('No se pudo eliminar el ranking');
             }
         }
     };
@@ -82,7 +70,7 @@ function RankingDetail() {
         setErrorMsg(null);
         try {
             console.log("Cargando ranking con ID:", id);
-            const res = await api.get(`/rankings/${id}`);
+            const res = await api.get('/rankings/' + id);
             console.log("Respuesta recibida:", res.data);
             
             if (res.data) {
@@ -140,9 +128,9 @@ function RankingDetail() {
         setBuscando(true);
         try {
             let endpoint = '';
-            if (tipoBusqueda === 'movie') endpoint = `/movies/search?query=${busqueda}&page=${pageToFetch}`;
-            else if (tipoBusqueda === 'tv') endpoint = `/tv/search?query=${busqueda}&page=${pageToFetch}`;
-            else if (tipoBusqueda === 'game') endpoint = `/games/search?query=${busqueda}&page=${pageToFetch}`;
+            if (tipoBusqueda === 'movie') endpoint = '/movies/search?query=' + busqueda + '&page=' + pageToFetch;
+            else if (tipoBusqueda === 'tv') endpoint = '/tv/search?query=' + busqueda + '&page=' + pageToFetch;
+            else if (tipoBusqueda === 'game') endpoint = '/games/search?query=' + busqueda + '&page=' + pageToFetch;
 
             const res = await api.get(endpoint);
             if (res.data && res.data.data && res.data.data.length > 0) {
@@ -192,21 +180,21 @@ function RankingDetail() {
         if (tipoBusqueda === 'game') {
             poster = media.background_image;
         } else if (media.poster_path) {
-            poster = `https://image.tmdb.org/t/p/w200${media.poster_path}`;
+            poster = 'https://image.tmdb.org/t/p/w200' + media.poster_path;
         }
         
         try {
-            await api.post(`/rankings/${id}/items`, {
+            await api.post('/rankings/' + id + '/items', {
                 media_id: media.id,
                 media_type: tipoBusqueda,
                 media_name: media.title || media.name || 'Desconocido',
                 media_image: poster
             });
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Añadido', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+            alerts.success('Añadido al ranking');
             fetchRanking();
         } catch (err) {
             const msg = err.response?.data?.message || err.response?.data?.errors || 'Error al añadir. Quizás ya esté en la lista.';
-            import('sweetalert2').then(Swal => Swal.default.fire({ icon: 'error', title: 'Error', text: typeof msg === 'string' ? msg : 'Error de validación', background: '#1e1e1e', color: '#fff' }));
+            alerts.error(typeof msg === 'string' ? msg : 'Error de validación');
         }
     };
 
@@ -219,35 +207,23 @@ function RankingDetail() {
         setRanking({ ...ranking, items: reorderedItems });
 
         try {
-            await api.put(`/rankings/${id}/reorder`, {
+            await api.put('/rankings/' + id, {
                 items: reorderedItems.map(item => ({ id: item.id, position: item.position }))
             });
         } catch (e) {
             fetchRanking();
-            import('sweetalert2').then(Swal => Swal.default.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error al ordenar', showConfirmButton: false, timer: 2000, background: '#1e1e1e', color: '#fff' }));
+            alerts.error('Error al ordenar');
         }
     };
 
     const handleEliminarItem = async (itemId) => {
-        const confirm = await Swal.fire({
-            title: '¿Quitar elemento?',
-            text: "Se eliminará de tu ranking",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#e50914',
-            cancelButtonColor: '#333',
-            confirmButtonText: 'Sí, quitar',
-            cancelButtonText: 'Cancelar',
-            background: '#1e1e1e',
-            color: '#fff'
-        });
-
+        const confirm = await alerts.confirm('¿Quitar elemento?', 'Se eliminará de tu ranking', 'Sí, quitar');
         if (confirm.isConfirmed) {
             try {
-                await api.delete(`/rankings/${id}/items/${itemId}`);
-                fetchRanking(); // recargar
+                await api.delete('/rankings/' + id + '/items/' + itemId);
+                fetchRanking();
             } catch (err) {
-                Swal.fire('Error', 'No se pudo eliminar', 'error');
+                alerts.error('No se pudo eliminar');
             }
         }
     };
@@ -332,14 +308,14 @@ function RankingDetail() {
                 
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', color: '#888', backgroundColor: 'rgba(255,255,255,0.03)', padding: '10px 15px', borderRadius: '8px', fontSize: '0.9rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src={ranking?.user?.avatar || `https://ui-avatars.com/api/?name=${ranking?.user?.name || 'User'}&background=random`} alt="User" style={{ width: '25px', height: '25px', borderRadius: '50%', border: '1px solid #333' }} />
+                        <img src={ranking?.user?.avatar || 'https://ui-avatars.com/api/?name=' + (ranking?.user?.name || 'User') + '&background=random'} alt="User" style={{ width: '25px', height: '25px', borderRadius: '50%', border: '1px solid #333' }} />
                         <span style={{ color: '#ddd' }}>Por <strong style={{color:'white'}}>{ranking?.user?.name || 'Desconocido'}</strong></span>
                     </div>
                     <span style={{color: '#444'}}>|</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><i className="fa-solid fa-list-ol"></i> <strong style={{color:'white'}}>{ranking?.items?.length || 0}</strong> elementos</span>
                     <span style={{color: '#444'}}>|</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <i className={`fa-solid ${ranking?.tipo === 'movies' ? 'fa-film' : ranking?.tipo === 'series' ? 'fa-tv' : ranking?.tipo === 'games' ? 'fa-gamepad' : 'fa-photo-film'}`}></i> 
+                        <i className={'fa-solid ' + (ranking?.tipo === 'movies' ? 'fa-film' : ranking?.tipo === 'series' ? 'fa-tv' : ranking?.tipo === 'games' ? 'fa-gamepad' : 'fa-photo-film')}></i> 
                         <strong style={{color:'white'}}>{ranking?.tipo === 'mixed' ? 'Cualquier Medio' : ranking?.tipo === 'movies' ? 'Películas' : ranking?.tipo === 'series' ? 'Series' : 'Videojuegos'}</strong>
                     </span>
                 </div>
@@ -367,7 +343,7 @@ function RankingDetail() {
                             <div style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: '#888' }}><i className="fa-solid fa-search"></i></div>
                             <input 
                                 type="text" 
-                                placeholder={`Añadir ${tipoBusqueda === 'movie' ? 'una Película' : tipoBusqueda === 'tv' ? 'una Serie' : 'un Videojuego'}...`} 
+                                placeholder={'Añadir ' + (tipoBusqueda === 'movie' ? 'una Película' : tipoBusqueda === 'tv' ? 'una Serie' : 'un Videojuego') + '...'} 
                                 value={busqueda}
                                 onChange={e => setBusqueda(e.target.value)}
                                 style={{ width: '100%', padding: '15px 40px', borderRadius: '10px', border: '1px solid #444', backgroundColor: '#2a2a2a', color: 'white', boxSizing: 'border-box', outline: 'none', transition: 'border 0.3s' }}
@@ -385,7 +361,7 @@ function RankingDetail() {
                             {resultadosVisibles.map((res, idx) => (
                                 <div key={res.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', borderBottom: idx !== resultadosVisibles.length -1 ? '1px solid #222' : 'none' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <img src={tipoBusqueda === 'game' ? res.background_image : (res.poster_path ? `https://image.tmdb.org/t/p/w92${res.poster_path}` : 'https://via.placeholder.com/45x68?text=N/A')} style={{ width: '45px', height: '68px', objectFit: 'cover', borderRadius: '5px' }} alt="Poster" />
+                                        <img src={tipoBusqueda === 'game' ? res.background_image : (res.poster_path ? 'https://image.tmdb.org/t/p/w92' + res.poster_path : 'https://via.placeholder.com/45x68?text=N/A')} style={{ width: '45px', height: '68px', objectFit: 'cover', borderRadius: '5px' }} alt="Poster" />
                                         <div>
                                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{res.title || res.name || 'Sin título'}</div>
                                             <div style={{ fontSize: '13px', color: '#888' }}>{res.year || res.release_date?.substring(0,4) || res.first_air_date?.substring(0,4) || ''}</div>
@@ -474,7 +450,7 @@ function RankingDetail() {
                                     style={{ width: '60px', height: '90px', objectFit: 'cover', borderRadius: '8px', boxShadow: '0 5px 15px rgba(0,0,0,0.6)', pointerEvents: 'none' }}
                                 />
 
-                                <div style={{ flex: 1, cursor: 'pointer' }} onPointerDown={e => {if(isOwner) e.stopPropagation();}} onClick={() => navigate(`/detalle/${item.media_type === 'tv' ? 'tv' : item.media_type === 'game' ? 'game' : 'movie'}/${item.media_id}`)}>
+                                <div style={{ flex: 1, cursor: 'pointer' }} onPointerDown={e => {if(isOwner) e.stopPropagation();}} onClick={() => navigate('/detalle/' + (item.media_type === 'tv' ? 'tv' : item.media_type === 'game' ? 'game' : 'movie') + '/' + item.media_id)}>
                                     <h3 style={{ margin: '0 0 8px 0', fontSize: '1.4rem', color: 'white', fontWeight: '800' }}>{item.media_name || 'Desconocido'}</h3>
                                     <span style={{ backgroundColor: 'rgba(255,255,255,0.1)', padding: '5px 12px', borderRadius: '15px', fontSize: '11px', textTransform: 'uppercase', color: '#ccc', fontWeight: 'bold', letterSpacing: '0.5px' }}>
                                         {item.media_type === 'movie' ? 'Película' : item.media_type === 'tv' ? 'Serie' : item.media_type === 'game' ? 'Videojuego' : 'Medio'}
