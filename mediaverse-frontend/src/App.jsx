@@ -18,6 +18,7 @@ import YaVistos from './pages/YaVistos';
 import Anime from './pages/Anime';
 import Trivia from './pages/Trivia';
 import ResetPassword from './pages/ResetPassword';
+import Ajustes from './pages/Ajustes';
 import { alerts } from './utils/swal';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from './services/api';
@@ -263,6 +264,7 @@ function App() {
                       <Link to="/ver-mas-tarde" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-clock"></i> Para más tarde</Link>
                       <Link to="/resenas" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-pen-to-square"></i> Mis Reseñas</Link>
                       <Link to="/yaVistos" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-eye"></i> Ya Vistos</Link>
+                      <Link to="/ajustes" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-gear"></i> Ajustes</Link>
 
                       <hr style={{ borderColor: '#333', width: '100%', margin: '5px 0' }} />
                       <button onClick={handleLogout} style={{ background: 'none', border: 'none', textAlign: 'left', color: '#e50914', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', padding: 0, transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
@@ -300,6 +302,7 @@ function App() {
             <Route path="/yaVistos" element={<YaVistos />} />
             <Route path="/Anime" element={<Anime />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/ajustes" element={<Ajustes />} />
           </Routes>
         </div>
 

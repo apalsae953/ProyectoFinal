@@ -192,7 +192,7 @@ function Games() {
                     ))}
                 </select>
 
-                {/* SELECTOR DE ORDEN - NUEVO */}
+                {/* SELECTOR DE ORDEN*/}
                 <select
                     value={filtros.sort}
                     onChange={(e) => {
@@ -336,7 +336,7 @@ function Games() {
                                         </span>
                                     ) : <div></div>}
 
-                                    {/* NOTA PERSONAL (AZUL Y CHICA) */}
+                                    {/* NOTA PERSONAL */}
                                     {valoraciones.find(v => v.api_id === juego.id) && (
                                         <span style={{ color: '#2196f3', fontSize: '0.75rem', backgroundColor: 'rgba(33, 150, 243, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
                                             {Number(valoraciones.find(v => v.api_id === juego.id).score).toFixed(1)}
@@ -408,7 +408,7 @@ function Games() {
                                 onClick={() => setBusqueda('')}
                                 style={{ padding: '12px 30px', borderRadius: '30px', border: '2px solid white', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1.2rem' }}
                             >
-                                ¿CONTINUAR? (Presiona para Limpiar)
+                                Reintentar búsqueda
                             </motion.button>
                         </motion.div>
                     )}

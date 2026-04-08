@@ -446,7 +446,7 @@ function Detalle() {
           </h2>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Hacemos lo mismo para juegos, quitamos el link oficial si el usuario así lo prefiere */}
+            {/* Hacemos lo mismo para juegos */}
 
 
             <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
