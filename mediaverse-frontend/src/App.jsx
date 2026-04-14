@@ -136,6 +136,8 @@ function App() {
                 <span className="hide-on-mobile">Mediaverse</span>
               </h2>
             </Link>
+            <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold' }}>Inicio</Link>
+
 
             {/* SECCIONES ESCRITORIO (Ocultas en móvil) */}
             <div className="hide-on-mobile" style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
@@ -145,6 +147,7 @@ function App() {
                 onMouseEnter={() => setCineMenuAbierto(true)}
                 onMouseLeave={() => setCineMenuAbierto(false)}
               >
+                
                 <Link to="/cine-y-series" style={{ color: 'white', textDecoration: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px 0' }}>
                   Cine y Series <i className="fa-solid fa-caret-down" style={{ fontSize: '12px', transition: 'transform 0.3s', transform: cineMenuAbierto ? 'rotate(180deg)' : 'none' }}></i>
                 </Link>
