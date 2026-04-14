@@ -206,9 +206,8 @@ function Trivia() {
             // Si es record, avisamos de manera sutil
             const currentRecord = records[quizActual.id] || 0;
             if (scoreToSave > currentRecord) {
-                // alerts.success('¡Nuevo récord personal esta semana!'); // Opcional
+                alerts.success('¡Nuevo récord semanal en ' + quizActual.titulo + '!');
             }
-
             // Actualizar records localmente
             setRecords(prev => ({
                 ...prev,
