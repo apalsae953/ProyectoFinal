@@ -16,13 +16,7 @@ class TriviaSeeder extends Seeder
      */
     public function run(): void
     {
-        // Limpiamos los datos antiguos para evitar duplicados
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        Respuesta::truncate();
-        Pregunta::truncate();
-        PuntuacionCuestionario::truncate();
-        Cuestionario::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        // Seed inicial
 
         // 1. CREAMOS LOS CUESTIONARIOS PRINCIPALES
         $cuestionarioCine = Cuestionario::create([
@@ -244,9 +238,7 @@ class TriviaSeeder extends Seeder
             ['pregunta' => "¿Qué actriz ostenta el récord de más premios Oscar ganados (4)?", 'respuestas' => ["Katharine Hepburn", "Meryl Streep", "Frances McDormand", "Ingrid Bergman"], 'correcta' => 0],
         ];
     
-        // 3. TODAS TUS PREGUNTAS DE VIDEOJUEGOS
-        // (Nota: En videojuegos los títulos suelen ser universales en inglés en España, 
-        // pero he ajustado nombres de personajes como "Jefe Maestro" y asegurado términos locales).
+        // Videojuegos
         $datosJuegos = [
             // EXTRA JUEGOS USER DATA
             ['pregunta' => "¿Cuál fue el nombre original de Mario antes de llamarse así en el juego 'Donkey Kong'?", 'respuestas' => ["Jumpman", "Mr. Video", "Luigi Prototype", "Plumber Boy"], 'correcta' => 0],
@@ -430,7 +422,7 @@ class TriviaSeeder extends Seeder
             ['pregunta' => "¿Quién es el protagonista de 'Dead Space'?", 'respuestas' => ["Isaac Clarke", "Gordon Freeman", "Jefe Maestro", "Doom Slayer"], 'correcta' => 0]
         ];
 
-        // 4. MOTOR DE INSERCIÓN AUTOMÁTICA
+        // Insertar datos
         // Insertar Cine
         foreach ($datosCine as $dato) {
             $pregunta = Pregunta::create([

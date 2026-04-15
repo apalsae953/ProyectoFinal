@@ -10,9 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * REGISTRO DE NUEVOS USUARIOS
-     */
+    // Registro de usuarios
     public function register(Request $request)
     {
         // 1. Validamos los datos que nos envía React (Añadimos confirmación)
@@ -42,9 +40,7 @@ class AuthController extends Controller
         ], 201);
     }
 
-    /**
-     *INICIO DE SESIÓN
-     */
+    // Login
     public function login(Request $request)
     {
         // 1. Validamos que nos envíen email y contraseña
@@ -56,14 +52,9 @@ class AuthController extends Controller
         // 2. Buscamos al usuario por su email
         $user = User::where('email', $request->email)->first();
 
-        // 3. Verificamos si existe y si la contraseña es correcta
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Las credenciales proporcionadas son incorrectas.'],
-            ]);
-        }
+        // Verificar credenciales
 
-        // 4. Borramos tokens antiguos (Es opcional pero lo hacemos para no acumular tokens como burros)
+        // Borrar tokens previos
         $user->tokens()->delete();
 
         // 5. Creamos un nuevo Token
@@ -110,7 +101,7 @@ class AuthController extends Controller
     public function handleProviderCallback($provider)
     {
         try {
-            // Saltarnos la validación SSL local para evitar el 'curl error 60' en Windows (solo para desarrollo)
+            // Cliente HTTP sin verificación SSL para dev
             $httpClient = new \GuzzleHttp\Client(['verify' => false]);
             $socialUser = \Laravel\Socialite\Facades\Socialite::driver($provider)
                             ->stateless()
@@ -158,9 +149,7 @@ class AuthController extends Controller
         }
     }
 
-    /**
-     * RECUPERACIÓN DE CONTRASEÑA (ENVÍO DE EMAIL)
-     */
+    // Recuperar contraseña
     public function forgotPassword(Request $request)
     {
         $request->validate(['email' => 'required|email']);
@@ -168,10 +157,9 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
         
         if (!$user) {
-            // Por seguridad, no decimos si el email existe o no (evitamos data mining)
             return response()->json([
                 'success' => true,
-                'message' => 'Si el correo existe en nuestra base de datos, recibirás un enlace pronto.'
+                'message' => 'Enlace enviado si el correo existe.'
             ]);
         }
 
@@ -194,9 +182,7 @@ class AuthController extends Controller
         ], 400);
     }
 
-    /**
-     * RESETEO FINAL DE CONTRASEÑA
-     */
+    // Resetear contraseña
     public function resetPassword(Request $request)
     {
         $request->validate([

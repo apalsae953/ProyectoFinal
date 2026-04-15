@@ -1,4 +1,4 @@
-/* Reseteo global para que Vite no interfiera con el diseño */
+/* Reset */
 * {
   margin: 0;
   padding: 0;
@@ -11,7 +11,7 @@ html, body, #root {
   background-color: #121212;
 }
 
-/* Ocultar barra de scroll pero permitir scroll funcional */
+/* Scrollbar */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
@@ -35,7 +35,7 @@ html, body, #root {
   background: #e50914;
 }
 
-/* Efecto hover para botones "Volver" */
+/* Botones */
 .btn-volver {
   transition: all 0.3s ease !important;
 }
@@ -60,7 +60,7 @@ html, body, #root {
   transition: all 0.3s ease;
 }
 
-/* --- CLASES DE RESPONSIVIDAD (MediaVerse Utilities) --- */
+/* Utilities */
 .responsive-grid {
   display: flex;
   flex-wrap: wrap;
@@ -115,7 +115,7 @@ html, body, #root {
   display: none;
 }
 
-/* --- CLASES DE COMPONENTES --- */
+/* Components */
 .media-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
@@ -128,7 +128,7 @@ html, body, #root {
   box-shadow: 0 10px 25px rgba(229, 9, 20, 0.4);
 }
 
-/* --- ESTILOS PREMIUM PARA SWEETALERT2 (MediaVerse Theme) --- */
+/* SweetAlert */
 .swal2-container {
   z-index: 100001 !important; /* Por encima de los modales de detalle que están en 10000 */
 }
@@ -202,7 +202,7 @@ html, body, #root {
   }
 }
 
-/* --- AJUSTES Y ACCESIBILIDAD --- */
+/* Accesibilidad */
 
 /* Text Sizes (Using Zoom for proper responsive scaling without breaking layouts) */
 html.text-grande {

@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 class InteraccionController extends Controller
 {
-    /**
-     * Alternar el estado de una interacción (Favoritos, Vistos, Ver más tarde)
-     */
+    // Toggle estado (Fav, Visto, Ver más tarde)
     public function toggle(Request $request)
     {
         // Validación de los datos de entrada
@@ -37,7 +35,7 @@ class InteraccionController extends Controller
                 ->where('tipo', $request->tipo_interaccion)
                 ->first();
 
-            // Lógica de alternancia (Delete si existe, Create si no)
+            // Alternar
             if ($interaccionExistente) {
                 // Si ya lo tenía en favoritos, lo borramos (Click para quitar)
                 $interaccionExistente->delete();
@@ -48,8 +46,7 @@ class InteraccionController extends Controller
                     'is_attached' => false // Desactivación del estado en el frontend
                 ], 200);
             } else {
-                // Lógica de EXCLUSIVIDAD: Visto vs Ver Más Tarde
-                // Favorito es independiente y no debe borrar nada.
+                // Exclusividad
                 if ($request->tipo_interaccion === 'visto' || $request->tipo_interaccion === 'ver_mas_tarde') {
                     $opuesto = $request->tipo_interaccion === 'visto' ? 'ver_mas_tarde' : 'visto';
                     Interaccion::where('user_id', $request->user()->id)
@@ -81,9 +78,7 @@ class InteraccionController extends Controller
         }
     }
 
-    /**
-     * Obtener listado de interacciones agrupadas del usuario
-     */
+    // Obtener interacciones
     public function misInteracciones(Request $request)
     {
         // Obtener interacciones ordenadas por fecha de creación
@@ -108,10 +103,7 @@ class InteraccionController extends Controller
         ], 200);
     }
 
-    /**
-     * ACTUALIZAR LA FECHA DE UNA INTERACCIÓN
-     * Permite al usuario modificar manualmente cuándo vio o jugó un título.
-     */
+    // Actualizar fecha
     public function updateDate(Request $request, $id)
     {
         // Validamos que la fecha tenga un formato correcto
@@ -120,12 +112,12 @@ class InteraccionController extends Controller
         ]);
 
         try {
-            // Buscamos la interacción asegurándonos de que pertenezca al usuario autenticado
+            // Buscar interacción
             $interaccion = Interaccion::where('id', $id)
                 ->where('user_id', $request->user()->id)
                 ->firstOrFail();
 
-            // Actualizamos el timestamp de creación para reflejar la nueva fecha
+            // Actualizar fecha
             $interaccion->created_at = $request->fecha;
             $interaccion->save();
 

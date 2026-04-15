@@ -9,9 +9,7 @@ use App\Models\Medio;
 
 class MedioController extends Controller
 {
-    /**
-     * Helper privado para fusionar los resultados de TMDB con nuestras valoraciones locales.
-     */
+    // Mezclar resultados de API con datos locales
     private function mergeWithLocalRatings($tmdbResults, $tipo = 'pelicula')
     {
         // 1. Extraemos los IDs de la API externa (TMDB)
@@ -40,9 +38,7 @@ class MedioController extends Controller
         return $tmdbResults;
     }
 
-    /**
-     * Obtener token de acceso para IGDB (Twitch OAuth2)
-     */
+    // Token IGDB
     private function getIgdbToken()
     {
         return cache()->remember('igdb_access_token', 5000000, function () {
@@ -64,9 +60,7 @@ class MedioController extends Controller
         });
     }
 
-    /**
-     * Normalizar datos de IGDB para que el frontend no rompa
-     */
+    // Formatear datos de IGDB
     private function formatIgdbGames($games)
     {
         return array_map(function ($game) {
@@ -87,9 +81,7 @@ class MedioController extends Controller
         }, $games);
     }
 
-    /**
-     * Mapeo de categorías de IGDB a nombres legibles
-     */
+    // Categorías IGDB
     private function getCategoryName($category)
     {
         $categories = [
@@ -123,6 +115,7 @@ class MedioController extends Controller
             $sortBy = $request->query('sort', 'popularity.desc');
 
             // SI EL USUARIO PIDE "MEJOR VALORADAS" -> PRIORIDAD MEDIAVERSE
+            // Ranking local
             if ($sortBy === 'vote_average.desc') {
                 $query = \App\Models\Medio::where('tipo', 'pelicula')
                     ->withAvg('valoraciones', 'puntuacion')
@@ -160,7 +153,7 @@ class MedioController extends Controller
             // FALLBACK / POPULARES: Usamos TMDB pero inyectamos nuestras notas
             $cacheKey = "popular_movies_{$page}_{$genre}_{$year}_{$sortBy}_vTrendingV1";
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($token, $page, $genre, $year, $sortBy) {
-                // Si no hay filtros, usamos TRENDING para captar estrenos inmediatos (como Darth Maul si fuera cine)
+                // Trending para estrenos
                 if (!$genre && !$year && $sortBy === 'popularity.desc') {
                     $resTrending = Http::withoutVerifying()->get('https://api.themoviedb.org/3/trending/movie/week', [
                         'api_key' => $token,
@@ -266,7 +259,7 @@ class MedioController extends Controller
             $cacheKey = "popular_series_{$page}_{$genre}_{$year}_{$sortBy}_vDoubleFetch20";
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($token, $page, $genre, $year, $sortBy) {
                 $finalResults = [];
-                $tmdbPage = ($page * 2) - 1; // Paginación doble para garantizar 20 tras el filtrado
+                $tmdbPage = ($page * 2) - 1; 
 
                 $fetchResults = function ($targetPage) use ($token, $genre, $year, $sortBy) {
                     if (!$genre && !$year && $sortBy === 'popularity.desc') {
@@ -351,9 +344,7 @@ class MedioController extends Controller
         }
     }
 
-    /**
-     * 🔍 BUSCAR SERIES POR TÍTULO
-     */
+    // Buscar series
     public function searchSeries(Request $request)
     {
         $request->validate(['query' => 'required|string|min:2']);
@@ -364,7 +355,7 @@ class MedioController extends Controller
             $page = (int) $request->query('page', 1);
             $limit = 20;
 
-            // Hacemos 5 peticiones concurrentes a TMDB para consolidar y ordenar globalmente
+            // Peticiones concurrentes TMDB
             $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
                 $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
                 $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
@@ -465,14 +456,6 @@ class MedioController extends Controller
                 if (str_contains($titleB, $q))
                     $scoreB += 250;
 
-                // 3. Relevancia histórica (votos) - PUNTUACIÓN DE FAMA (Requisito usuario)
-                $scoreA += ($a['vote_count'] ?? 0) / 2;
-                $scoreB += ($b['vote_count'] ?? 0) / 2;
-
-                if (abs($scoreA - $scoreB) > 1)
-                    return $scoreB <=> $scoreA;
-
-                // 4. Popularidad actual
                 return $b['popularity'] <=> $a['popularity'];
             });
 
@@ -494,9 +477,7 @@ class MedioController extends Controller
         }
     }
 
-    /**
-     * BUSCAR PELÍCULAS POR TÍTULO
-     */
+    // Buscar películas
     public function searchMovies(Request $request)
     {
         $request->validate(['query' => 'required|string|min:2']);
@@ -507,7 +488,7 @@ class MedioController extends Controller
             $page = (int) $request->query('page', 1);
             $limit = 20;
 
-            // Escaneamos 10 páginas de golpe de TMDB para asegurar que capturamos clásicos sepultados (ej: Star Wars Ep V)
+            // Escaneo de múltiples páginas para clásicos
             $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
                 $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
                 $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
@@ -612,7 +593,7 @@ class MedioController extends Controller
                 if (str_contains($titleB, $q))
                     $scoreB += 250;
 
-                // 3. Añadimos el peso de los votos (Relevancia histórica) - PUNTUACIÓN DE FAMA
+                // Factor relevancia por votos
                 $scoreA += ($a['vote_count'] ?? 0) / 2;
                 $scoreB += ($b['vote_count'] ?? 0) / 2;
 
@@ -650,7 +631,7 @@ class MedioController extends Controller
             $sortBy = $request->query('sort', 'rating_count'); // Por defecto ordenamos por conteo de votos de la API
             $offset = ($page - 1) * 20;
 
-            // SI SE PIDE MEJOR VALORADOS -> PRIORIDAD MEDIAVERSE
+            // Mejores valorados localmente
             if ($sortBy === 'rating') {
                 $query = \App\Models\Medio::where('tipo', 'videojuego')
                     ->withAvg('valoraciones', 'puntuacion')
@@ -681,7 +662,7 @@ class MedioController extends Controller
             }
 
             // FALLBACK A IGDB (ÓRDENES POR DEFECTO / POPULARIDAD 3 MESES)
-            $cacheKey = "popular_games_v_last3m_final_{$page}_{$genre}_{$year}_{$platform}_{$sortBy}";
+            $cacheKey = "popular_games_v_last90d_v7_{$page}_{$genre}_{$year}_{$platform}_{$sortBy}";
             $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset, $genre, $year, $platform, $sortBy) {
                 $where = ["cover != null"];
                 if ($genre)
@@ -693,12 +674,13 @@ class MedioController extends Controller
                     $end = strtotime("{$year}-12-31");
                     $where[] = "first_release_date >= {$start} & first_release_date <= {$end}";
                 } else {
-                    // Mas populares en los últimos 3 meses (Requisito usuario)
-                    $hace3Meses = now()->subMonths(3)->timestamp;
+                    // Mas populares de los últimos 90 días (ajustado para ver solo lo más reciente)
+                    $hace90Dias = now()->subDays(90)->timestamp;
                     $dondeEstamos = now()->timestamp;
-                    $where[] = "first_release_date >= {$hace3Meses} & first_release_date <= {$dondeEstamos}";
+                    $where[] = "first_release_date >= {$hace90Dias} & first_release_date <= {$dondeEstamos}";
                 }
 
+                // Popularidad por total_rating_count
                 $orderClause = ($sortBy === 'rating') ? "rating desc" : "total_rating_count desc";
                 $whereStr = implode(' & ', $where);
                 $queryStr = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
@@ -721,9 +703,7 @@ class MedioController extends Controller
         }
     }
 
-    /**
-     * MIX DE ANIME: Películas y Series de Animación Japonesa.
-     */
+    // Películas y Series de Anime
     public function getAnimeMixed(Request $request)
     {
         try {
@@ -924,12 +904,14 @@ class MedioController extends Controller
             $accessToken = $this->getIgdbToken();
             if (!$accessToken)
                 return response()->json(['success' => false, 'message' => 'Error IGDB Token'], 500);
-            $data = \Illuminate\Support\Facades\Cache::remember('latest_games_dashboard_v2', 1800, function () use ($accessToken) {
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_games_dashboard_v7', 1800, function () use ($accessToken) {
                 $hace90Dias = now()->subDays(90)->timestamp;
                 $manana = now()->addDay()->timestamp;
+                // Equilibrio: Juegos de los últimos 3 meses pero ORDENADOS por popularidad real
+                // Añadimos filtro de votos > 5 para asegurar que son 'Imprescindibles' de calidad
                 $query = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
-                          where first_release_date >= {$hace90Dias} & first_release_date <= {$manana} & cover != null & total_rating_count > 10; 
-                          sort first_release_date desc; limit 12;";
+                          where first_release_date >= {$hace90Dias} & first_release_date <= {$manana} & cover != null & total_rating_count > 5; 
+                          sort total_rating_count desc; limit 12;";
                 $response = Http::withoutVerifying()->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
                     ->withBody($query, 'text/plain')->post('https://api.igdb.com/v4/games');
                 return $response->failed() ? [] : $response->json();
