@@ -13,12 +13,20 @@ class TriviaController extends Controller
      */
     public function getCuestionarios()
     {
-        $cuestionarios = Cuestionario::all();
+        try {
+            // Incluimos el conteo de preguntas para que el Frontend sepa si se puede jugar
+            $cuestionarios = Cuestionario::withCount('preguntas')->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $cuestionarios
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'data' => $cuestionarios
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cargar cuestionarios: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
