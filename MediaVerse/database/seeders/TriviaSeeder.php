@@ -38,60 +38,54 @@ class TriviaSeeder extends Seeder
                 'dificultad' => 'dificil'
             ]);
 
-            // 2. Datos Cine
+            // 2. Datos Cine (Consolidados)
             $datosCine = [
-                ['pregunta' => "¿Quién dirigió la película 'Origen'?", 'respuestas' => ["Christopher Nolan", "Spielberg", "Tarantino", "Scorsese"], 'correcta' => 0],
-                ['pregunta' => "¿Cuál es el actor que interpreta a Iron Man?", 'respuestas' => ["Chris Evans", "Robert Downey Jr.", "Chris Hemsworth", "Mark Ruffalo"], 'correcta' => 1],
-                ['pregunta' => "¿Quién dirigió 'El Padrino'?", 'respuestas' => ["Francis Ford Coppola", "Martin Scorsese", "Stanley Kubrick", "Alfred Hitchcock"], 'correcta' => 0],
-                ['pregunta' => "¿En 'Matrix', qué pastilla elige Neo?", 'respuestas' => ["Azul", "Verde", "Roja", "Amarilla"], 'correcta' => 2],
-                ['pregunta' => "¿Quién es el padre de Luke Skywalker?", 'respuestas' => ["Darth Vader", "Obi-Wan Kenobi", "Yoda", "Han Solo"], 'correcta' => 0],
-                ['pregunta' => "¿Qué película protagoniza un vaquero llamado Woody?", 'respuestas' => ["Toy Story", "Pinocho", "Cars", "Frozen"], 'correcta' => 0],
-                ['pregunta' => "¿Quién dirigió 'Psicosis'?", 'respuestas' => ["Alfred Hitchcock", "Orson Welles", "Fritz Lang", "Billy Wilder"], 'correcta' => 0],
-                ['pregunta' => "¿Cómo se llama el león protagonista de 'El Rey León'?", 'respuestas' => ["Mufasa", "Scar", "Simba", "Nala"], 'correcta' => 2],
-                ['pregunta' => "¿Quién interpretó al Joker en 'El caballero oscuro'?", 'respuestas' => ["Heath Ledger", "Joaquin Phoenix", "Jack Nicholson", "Jared Leto"], 'correcta' => 0],
-                ['pregunta' => "¿Quién dirigió 'Pulp Fiction'?", 'respuestas' => ["Quentin Tarantino", "Guy Ritchie", "Robert Rodriguez", "George Lucas"], 'correcta' => 0],
+                ['p' => "¿Quién dirigió 'Origen'?", 'r' => ["Christopher Nolan", "Spielberg", "Tarantino", "Scorsese"], 'c' => 0],
+                ['p' => "¿Actor de Iron Man?", 'r' => ["Chris Evans", "Robert Downey Jr.", "Chris Hemsworth", "Mark Ruffalo"], 'c' => 1],
+                ['p' => "¿Director de 'El Padrino'?", 'r' => ["Francis Ford Coppola", "Scorsese", "Kubrick", "Hitchcock"], 'c' => 0],
+                ['p' => "¿Neo elige la pastilla...?", 'r' => ["Azul", "Verde", "Roja", "Amarilla"], 'c' => 2],
+                ['p' => "¿Padre de Luke Skywalker?", 'r' => ["Darth Vader", "Obi-Wan Kenobi", "Yoda", "Han Solo"], 'c' => 0],
+                ['p' => "¿Protagonista de Toy Story?", 'r' => ["Woody", "Buzz", "Rex", "Slinky"], 'c' => 0],
+                ['p' => "¿Actor de Jack Dawson?", 'r' => ["DiCaprio", "Pitt", "Depp", "Cruise"], 'c' => 0],
+                ['p' => "¿Villano de Avengers: Infinity War?", 'r' => ["Thanos", "Loki", "Ultron", "Hela"], 'c' => 0],
+                ['p' => "¿Dory aparece en...?", 'r' => ["Buscando a Nemo", "La Sirenita", "Shark Tale", "Luca"], 'c' => 0],
+                ['p' => "¿Serie ambientada en Poniente?", 'r' => ["Juego de Tronos", "The Witcher", "Vikingos", "The Last Kingdom"], 'c' => 0],
             ];
 
-            // 3. Datos Juegos
+            // 3. Datos Juegos (Consolidados)
             $datosJuegos = [
-                ['pregunta' => "¿Cuál es el nombre del protagonista de 'The Legend of Zelda'?", 'respuestas' => ["Zelda", "Link", "Ganon", "Epona"], 'correcta' => 1],
-                ['pregunta' => "¿Qué compañía desarrolló 'Fortnite'?", 'respuestas' => ["Activision", "EA", "Epic Games", "Ubisoft"], 'correcta' => 2],
-                ['pregunta' => "¿Quién es el fontanero hermano de Mario?", 'respuestas' => ["Wario", "Luigi", "Waluigi", "Toad"], 'correcta' => 1],
-                ['pregunta' => "¿Qué estudio desarrolló 'The Last of Us'?", 'respuestas' => ["Santa Monica", "Naughty Dog", "Insomniac", "Guerrilla"], 'correcta' => 1],
-                ['pregunta' => "¿Cuál es el videojuego más vendido de la historia?", 'respuestas' => ["GTA V", "Minecraft", "Tetris", "Wii Sports"], 'correcta' => 1],
-                ['pregunta' => "¿En qué juego de terror aparece 'Pyramid Head'?", 'respuestas' => ["Silent Hill", "Resident Evil", "Amnesia", "Outlast"], 'correcta' => 0],
-                ['pregunta' => "¿Quién es el protagonista de la saga 'God of War'?", 'respuestas' => ["Kratos", "Zeus", "Atreus", "Ares"], 'correcta' => 0],
-                ['pregunta' => "¿Cómo se llama la ciudad ficticia de 'GTA V'?", 'respuestas' => ["Vice City", "Liberty City", "Los Santos", "San Fierro"], 'correcta' => 2],
-                ['pregunta' => "¿Cuál es la mascota de Sega?", 'respuestas' => ["Mario", "Sonic", "Crash", "Spyro"], 'correcta' => 1],
-                ['pregunta' => "¿Cómo se llama el Jefe Maestro en la saga Halo?", 'respuestas' => ["John-117", "Cortana", "Noble 6", "Arbiter"], 'correcta' => 0],
+                ['p' => "¿Protagonista de Zelda?", 'r' => ["Zelda", "Link", "Ganon", "Epona"], 'c' => 1],
+                ['p' => "¿Creador de Fortnite?", 'r' => ["Epic Games", "EA", "Activision", "Ubisoft"], 'c' => 0],
+                ['p' => "¿Hermano de Mario?", 'r' => ["Luigi", "Wario", "Waluigi", "Toad"], 'c' => 0],
+                ['p' => "¿Estudio de The Last of Us?", 'r' => ["Naughty Dog", "Santa Monica", "Insomniac", "Guerrilla"], 'c' => 0],
+                ['p' => "¿Ciudad de GTA V?", 'r' => ["Los Santos", "Vice City", "Liberty City", "San Fierro"], 'c' => 0],
+                ['p' => "¿Protagonista de God of War?", 'r' => ["Kratos", "Zeus", "Ares", "Hades"], 'c' => 0],
+                ['p' => "¿Mascota de Sega?", 'r' => ["Sonic", "Mario", "Crash", "Spyro"], 'c' => 0],
+                ['p' => "¿Juego de 'Pyramid Head'?", 'r' => ["Silent Hill", "Resident Evil", "Amnesia", "F.E.A.R"], 'c' => 0],
+                ['p' => "¿Nombre del Jefe Maestro?", 'r' => ["John-117", "Cortana", "Noble 6", "Johnson"], 'c' => 0],
+                ['p' => "¿Juego más vendido de la historia?", 'r' => ["Minecraft", "Tetris", "GTA V", "Wii Sports"], 'c' => 0],
             ];
 
-            // Función de inserción
-            $fastInsert = function($cId, $datos) {
+            // Función de inserción rápida
+            $ins = function($cId, $datos) {
                 foreach ($datos as $d) {
                     $pId = DB::table('preguntas')->insertGetId([
-                        'cuestionario_id' => $cId,
-                        'texto_pregunta' => $d['pregunta'],
+                        'cuestionario_id' => $cId, 'texto_pregunta' => $d['p'],
                         'created_at' => now(), 'updated_at' => now()
                     ]);
-                    $resps = [];
-                    foreach ($d['respuestas'] as $i => $t) {
-                        $resps[] = [
+                    foreach ($d['r'] as $i => $t) {
+                        DB::table('respuestas')->insert([
                             'pregunta_id' => $pId, 'texto_respuesta' => $t,
-                            'es_correcta' => ($i === $d['correcta']),
+                            'es_correcta' => ($i === $d['c']),
                             'created_at' => now(), 'updated_at' => now()
-                        ];
+                        ]);
                     }
-                    DB::table('respuestas')->insert($resps);
                 }
             };
 
-            $fastInsert($cCine->id, $datosCine);
-            $fastInsert($cJuegos->id, $datosJuegos);
-            
-            // Mixto: Combinamos ambos
-            $mixed = array_merge($datosCine, $datosJuegos);
-            $fastInsert($cMixto->id, $mixed);
+            $ins($cCine->id, $datosCine);
+            $ins($cJuegos->id, $datosJuegos);
+            $ins($cMixto->id, array_merge($datosCine, $datosJuegos));
         });
     }
 }
