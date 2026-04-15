@@ -17,6 +17,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// --- BOTÓN DE PÁNICO: Limpiar Caché en Producción ---
+Route::get('/force-clear', function() {
+    \Illuminate\Support\Facades\Artisan::call('route:clear');
+    \Illuminate\Support\Facades\Artisan::call('config:clear');
+    \Illuminate\Support\Facades\Artisan::call('cache:clear');
+    \Illuminate\Support\Facades\Cache::forget('dashboard_full_data_v10');
+    return "Servidor Limpio: Rutas, Configuración y Caché reseteados.";
+});
+
 // RUTAS PÚBLICAS (No requieren login)
 
 // --- Catálogo (TMDB / RAWG) ---
@@ -39,17 +48,18 @@ Route::get('/anime/popular', [MedioController::class, 'getAnimeMixed']);
 Route::get('/anime/search', [MedioController::class, 'searchAnimeMixed']);
 Route::get('/dashboard/summary', [MedioController::class, 'getDashboardSummary']);
 
-// --- Ruta Temporal para Seeding Mejorada ---
-Route::get('/system/seed-trivia', function() {
+// --- Ruta Temporal para Seeding Mejorada y Limpieza de Caché ---
+Route::get('/system/seed-trivia', function(Request $request) {
     try {
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TriviaSeeder', '--force' => true]);
+        // Forzamos limpieza de caché del dashboard para que se regenere con datos frescos
+        \Illuminate\Support\Facades\Cache::forget('dashboard_full_data_v10');
+        \Illuminate\Support\Facades\Cache::forget('dashboard_full_data_v9');
         
-        $cine = \App\Models\Pregunta::where('cuestionario_id', 1)->count(); // IDs asumiendo base limpia
-        $juegos = \App\Models\Pregunta::where('cuestionario_id', 2)->count();
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TriviaSeeder', '--force' => true]);
         
         return response()->json([
             'success' => true, 
-            'message' => 'Base de datos poblada con éxito',
+            'message' => 'Caché limpiado y Base de datos poblada con éxito',
             'counts' => [
                 'cine_y_series' => \DB::table('preguntas')->join('cuestionarios', 'preguntas.cuestionario_id', '=', 'cuestionarios.id')->where('cuestionarios.categoria', 'peliculas_y_series')->count(),
                 'videojuegos' => \DB::table('preguntas')->join('cuestionarios', 'preguntas.cuestionario_id', '=', 'cuestionarios.id')->where('cuestionarios.categoria', 'videojuegos')->count(),
