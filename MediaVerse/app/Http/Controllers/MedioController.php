@@ -1575,7 +1575,8 @@ class MedioController extends Controller
     public function getDashboardSummary(Request $request)
     {
         // Cache por 1 hora (3600 seg) para máxima velocidad
-        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v10', 3600, function () use ($request) {
+        // Usamos una versión de caché distinta para forzar la actualización con los campos nuevos
+        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v11', 3600, function () use ($request) {
             $data = [
                 'movies' => [],
                 'series' => [],
@@ -1586,42 +1587,35 @@ class MedioController extends Controller
             // 1. Películas
             try {
                 $moviesRes = $this->getLatestMovies($request);
-                if ($moviesRes instanceof \Illuminate\Http\JsonResponse) {
-                    $moviesData = $moviesRes->getData();
-                    $data['movies'] = $moviesData->data ?? [];
-                }
-            } catch (\Exception $e) { \Log::error("Dashboard Movies Error: " . $e->getMessage()); }
+                $data['movies'] = $moviesRes->getData()->data ?? [];
+            } catch (\Exception $e) { \Log::error("Dashboard Movies Error"); }
 
             // 2. Series
             try {
                 $seriesRes = $this->getLatestSeries($request);
-                if ($seriesRes instanceof \Illuminate\Http\JsonResponse) {
-                    $seriesData = $seriesRes->getData();
-                    $data['series'] = $seriesData->data ?? [];
-                }
-            } catch (\Exception $e) { \Log::error("Dashboard Series Error: " . $e->getMessage()); }
+                $data['series'] = $seriesRes->getData()->data ?? [];
+            } catch (\Exception $e) { \Log::error("Dashboard Series Error"); }
 
             // 3. Juegos
             try {
                 $gamesRes = $this->getLatestGames($request);
-                if ($gamesRes instanceof \Illuminate\Http\JsonResponse) {
-                    $gamesData = $gamesRes->getData();
-                    $data['games'] = $gamesData->data ?? [];
-                }
-            } catch (\Exception $e) { \Log::error("Dashboard Games Error: " . $e->getMessage()); }
+                $data['games'] = $gamesRes->getData()->data ?? [];
+            } catch (\Exception $e) { \Log::error("Dashboard Games Error"); }
 
-            // 4. Hilos del foro
+            // 4. Hilos del foro (Con todos sus datos originales)
             try {
-                $data['threads'] = \App\Models\Hilo::with('user')
+                $data['threads'] = \App\Models\Hilo::with(['user', 'medio'])
+                    ->withCount('respuestas')
                     ->orderBy('created_at', 'desc')
                     ->take(5)
                     ->get();
-            } catch (\Exception $e) { \Log::error("Dashboard Threads Error: " . $e->getMessage()); }
+            } catch (\Exception $e) { \Log::error("Dashboard Threads Error"); }
 
             return [
                 'success' => true,
                 'data' => $data
             ];
         });
+    }
     }
 }
