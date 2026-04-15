@@ -1571,4 +1571,28 @@ class MedioController extends Controller
             return response()->json(['success' => false, 'message' => 'Error de servidor'], 500);
         }
     }
+
+    public function getDashboardSummary(Request $request)
+    {
+        try {
+            $data = \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v9', 900, function () {
+                $moviesRes = $this->getLatestMovies(new Request());
+                $seriesRes = $this->getLatestSeries(new Request());
+                $gamesRes = $this->getLatestGames(new Request());
+                
+                $threads = \App\Models\Hilo::with(['user', 'medio'])->withCount('respuestas')->orderBy('created_at', 'desc')->limit(5)->get();
+
+                return [
+                    'movies' => $moviesRes->getData()->data ?? [],
+                    'series' => $seriesRes->getData()->data ?? [],
+                    'games' => $gamesRes->getData()->data ?? [],
+                    'threads' => $threads
+                ];
+            });
+
+            return response()->json(['success' => true, 'data' => $data], 200);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
 }

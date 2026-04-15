@@ -37,6 +37,17 @@ Route::get('/actors/popular', [MedioController::class, 'getPopularActors']);
 Route::get('/actors/search', [MedioController::class, 'searchActors']);
 Route::get('/anime/popular', [MedioController::class, 'getAnimeMixed']);
 Route::get('/anime/search', [MedioController::class, 'searchAnimeMixed']);
+Route::get('/dashboard/summary', [MedioController::class, 'getDashboardSummary']);
+
+// --- Ruta Temporal para Seeding (Sin Shell) ---
+Route::get('/system/seed-trivia', function() {
+    try {
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TriviaSeeder', '--force' => true]);
+        return response()->json(['success' => true, 'message' => \Illuminate\Support\Facades\Artisan::output()]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()]);
+    }
+});
 
 // --- Autenticación ---
 Route::post('/register', [AuthController::class, 'register']);

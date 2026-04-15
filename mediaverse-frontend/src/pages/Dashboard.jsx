@@ -26,25 +26,23 @@ function Dashboard() {
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
-          const [resMovies, resSeries, resGames, resThreads] = await Promise.all([
-            api.get('/movies/latest'),
-            api.get('/tv/latest'),
-            api.get('/games/latest'),
-            api.get('/threads?dashboard=true')
-          ]);
+          // LLAMADA OPTIMIZADA: Todo en un solo paquete para ahorrar tiempo de red
+          const res = await api.get('/dashboard/summary');
+          const batch = res.data.data;
 
-          if (resMovies.data.success) setPopularMovies(resMovies.data.data.slice(0, 10));
-          if (resSeries.data.success) setPopularSeries(resSeries.data.data.slice(0, 10));
-          if (resGames.data.success) setPopularGames(resGames.data.data.slice(0, 10));
-          if (resThreads.data.success) setLatestThreads(resThreads.data.data);
+          if (batch) {
+            if (batch.movies) setPopularMovies(batch.movies.slice(0, 10));
+            if (batch.series) setPopularSeries(batch.series.slice(0, 10));
+            if (batch.games) setPopularGames(batch.games.slice(0, 10));
+            if (batch.threads) setLatestThreads(batch.threads);
 
-          // Combinamos las novedades para la sección destacada (Hero)
-          const hot = [
-            ...(resMovies.data.data?.slice(0, 3).map(m => ({ ...m, type: 'movie' })) || []),
-            ...(resSeries.data.data?.slice(0, 2).map(s => ({ ...s, type: 'tv' })) || []),
-            ...(resGames.data.data?.slice(0, 2).map(g => ({ ...g, type: 'game' })) || [])
-          ];
-          setTrending(hot);
+            const hot = [
+              ...(batch.movies?.slice(0, 3).map(m => ({ ...m, type: 'movie' })) || []),
+              ...(batch.series?.slice(0, 2).map(s => ({ ...s, type: 'tv' })) || []),
+              ...(batch.games?.slice(0, 2).map(g => ({ ...g, type: 'game' })) || [])
+            ];
+            setTrending(hot);
+          }
 
           // Si el usuario está logueado, obtenemos sus estadísticas de interacción
           const token = localStorage.getItem('auth_token');
@@ -59,7 +57,7 @@ function Dashboard() {
               });
             }
           }
-          break; // éxito, salimos del bucle
+          break; // éxito
         } catch (err) {
           console.error(`Dashboard fetch attempt ${attempt} failed:`, err);
           if (attempt < MAX_RETRIES) {

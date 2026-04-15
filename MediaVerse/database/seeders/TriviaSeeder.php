@@ -16,6 +16,12 @@ class TriviaSeeder extends Seeder
      */
     public function run(): void
     {
+        // 0. LIMPIEZA PREVIA (Opcional pero recomendado para evitar duplicados en cada deploy)
+        DB::statement('SET CONSTRAINTS ALL DEFERRED'); // Para PostgreSQL/Supabase
+        DB::table('respuestas')->delete();
+        DB::table('preguntas')->delete();
+        DB::table('cuestionarios')->delete();
+        
         // Seed inicial
 
         // 1. CREAMOS LOS CUESTIONARIOS PRINCIPALES
