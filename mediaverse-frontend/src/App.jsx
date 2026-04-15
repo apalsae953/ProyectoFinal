@@ -82,6 +82,14 @@ function App() {
     setMenuAbierto(true);
   };
 
+  // Keep-alive: pinga el backend cada 10 min para evitar que Render se duerma
+  useEffect(() => {
+    const ping = () => api.get('/movies/latest').catch(() => {});
+    ping();
+    const interval = setInterval(ping, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Sincronizar estado cuando cambie el storage u otros componentes avisen
   useEffect(() => {
     const syncAuth = () => {

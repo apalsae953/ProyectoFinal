@@ -77,6 +77,15 @@ function Rankings() {
         }
     }, [tab, tipoFiltro, page, isLogged]);
 
+    // Polling cada 30 segundos en la pestaña de globales
+    useEffect(() => {
+        if (tab !== 'globales') return;
+        const interval = setInterval(() => {
+            fetchGlobales();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [tab, tipoFiltro, page, busquedaGlobal]);
+
     const handleSearchSubmit = (e) => {
         e.preventDefault();
         setPage(1);

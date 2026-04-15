@@ -122,6 +122,15 @@ function Foro() {
   useEffect(() => { fetchHilos(); }, [categoria, sort]);
   useEffect(() => { if (searchTimeout.current) clearTimeout(searchTimeout.current); searchTimeout.current = setTimeout(() => fetchHilos(), 400); return () => clearTimeout(searchTimeout.current); }, [search]);
 
+  // Polling de la lista de hilos cada 30 segundos cuando no hay hilo abierto
+  useEffect(() => {
+    if (hiloActivo) return;
+    const interval = setInterval(() => {
+      fetchHilos();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [hiloActivo, categoria, sort, search]);
+
   // Abrir o refrescar un hilo. silent=true evita que salga el spinner de carga central
   const openHilo = async (id, silent = false) => { 
     if (!silent) {
