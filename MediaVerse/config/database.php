@@ -96,6 +96,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'prepare_threshold' => 0, // Solución para Supabase Transaction Mode
         ],
 
         'sqlsrv' => [
