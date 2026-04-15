@@ -1574,25 +1574,54 @@ class MedioController extends Controller
 
     public function getDashboardSummary(Request $request)
     {
-        try {
-            $data = \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v9', 900, function () {
-                $moviesRes = $this->getLatestMovies(new Request());
-                $seriesRes = $this->getLatestSeries(new Request());
-                $gamesRes = $this->getLatestGames(new Request());
-                
-                $threads = \App\Models\Hilo::with(['user', 'medio'])->withCount('respuestas')->orderBy('created_at', 'desc')->limit(5)->get();
+        // Cache por 1 hora (3600 seg) para máxima velocidad
+        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v10', 3600, function () use ($request) {
+            $data = [
+                'movies' => [],
+                'series' => [],
+                'games'  => [],
+                'threads' => []
+            ];
 
-                return [
-                    'movies' => $moviesRes->getData()->data ?? [],
-                    'series' => $seriesRes->getData()->data ?? [],
-                    'games' => $gamesRes->getData()->data ?? [],
-                    'threads' => $threads
-                ];
-            });
+            // 1. Películas
+            try {
+                $moviesRes = $this->getLatestMovies($request);
+                if ($moviesRes instanceof \Illuminate\Http\JsonResponse) {
+                    $moviesData = $moviesRes->getData();
+                    $data['movies'] = $moviesData->data ?? [];
+                }
+            } catch (\Exception $e) { \Log::error("Dashboard Movies Error: " . $e->getMessage()); }
 
-            return response()->json(['success' => true, 'data' => $data], 200);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-        }
+            // 2. Series
+            try {
+                $seriesRes = $this->getLatestSeries($request);
+                if ($seriesRes instanceof \Illuminate\Http\JsonResponse) {
+                    $seriesData = $seriesRes->getData();
+                    $data['series'] = $seriesData->data ?? [];
+                }
+            } catch (\Exception $e) { \Log::error("Dashboard Series Error: " . $e->getMessage()); }
+
+            // 3. Juegos
+            try {
+                $gamesRes = $this->getLatestGames($request);
+                if ($gamesRes instanceof \Illuminate\Http\JsonResponse) {
+                    $gamesData = $gamesRes->getData();
+                    $data['games'] = $gamesData->data ?? [];
+                }
+            } catch (\Exception $e) { \Log::error("Dashboard Games Error: " . $e->getMessage()); }
+
+            // 4. Hilos del foro
+            try {
+                $data['threads'] = \App\Models\Hilo::with('user')
+                    ->orderBy('created_at', 'desc')
+                    ->take(5)
+                    ->get();
+            } catch (\Exception $e) { \Log::error("Dashboard Threads Error: " . $e->getMessage()); }
+
+            return [
+                'success' => true,
+                'data' => $data
+            ];
+        });
     }
 }
