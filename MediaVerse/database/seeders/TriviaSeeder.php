@@ -6,468 +6,89 @@ use Illuminate\Database\Seeder;
 use App\Models\Cuestionario;
 use App\Models\Pregunta;
 use App\Models\Respuesta;
-use App\Models\PuntuacionCuestionario;
 use Illuminate\Support\Facades\DB;
 
 class TriviaSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // 0. LIMPIEZA PREVIA (Opcional pero recomendado para evitar duplicados en cada deploy)
-        DB::statement('SET CONSTRAINTS ALL DEFERRED'); // Para PostgreSQL/Supabase
-        DB::table('respuestas')->delete();
-        DB::table('preguntas')->delete();
-        DB::table('cuestionarios')->delete();
-        
-        // Seed inicial
+        DB::transaction(function() {
+            // 0. Limpieza total rápida
+            DB::statement('TRUNCATE TABLE respuestas, preguntas, cuestionarios RESTART IDENTITY CASCADE');
 
-        // 1. CREAMOS LOS CUESTIONARIOS PRINCIPALES
-        $cuestionarioCine = Cuestionario::create([
-            'titulo' => 'Películas y Series',
-            'descripcion' => 'Demuestra tus conocimientos sobre directores, actores, películas y series icónicas.',
-            'categoria' => 'peliculas_y_series',
-            'dificultad' => 'medio'
-        ]);
+            // 1. Cuestionarios
+            $cCine = Cuestionario::create([
+                'titulo' => 'Películas y Series',
+                'descripcion' => 'Demuestra tus conocimientos sobre cine y series.',
+                'categoria' => 'peliculas_y_series',
+                'dificultad' => 'medio'
+            ]);
 
-        $cuestionarioJuegos = Cuestionario::create([
-            'titulo' => 'Cultura de Videojuegos',
-            'descripcion' => '¿Eres un verdadero gamer? Pon a prueba tu memoria sobre las mejores sagas.',
-            'categoria' => 'videojuegos',
-            'dificultad' => 'medio'
-        ]);
+            $cJuegos = Cuestionario::create([
+                'titulo' => 'Cultura de Videojuegos',
+                'descripcion' => '¿Eres un verdadero gamer?',
+                'categoria' => 'videojuegos',
+                'dificultad' => 'medio'
+            ]);
 
-        $cuestionarioMixto = Cuestionario::create([
-            'titulo' => 'Modo Mixto: Todo Vale',
-            'descripcion' => 'Cine, series y videojuegos mezclados. Solo los más expertos sobreviven.',
-            'categoria' => 'mixto',
-            'dificultad' => 'dificil'
-        ]);
+            $cMixto = Cuestionario::create([
+                'titulo' => 'Modo Mixto',
+                'descripcion' => 'Todo mezclado.',
+                'categoria' => 'mixto',
+                'dificultad' => 'dificil'
+            ]);
 
-        // 2. TODAS LAS PREGUNTAS DE CINE (Localizadas para España)
-        $datosCine = [
-            // Directores y Creadores
-            ['pregunta' => "¿Quién dirigió la película 'Origen'?", 'respuestas' => ["Christopher Nolan", "Steven Spielberg", "Quentin Tarantino", "Martin Scorsese"], 'correcta' => 0, 'imagen' => 'https://images.unsplash.com/photo-1542204172-3c36ee9fec81?auto=format&fit=crop&q=80&w=400'],
-            ['pregunta' => "¿Quién dirigió 'El Padrino'?", 'respuestas' => ["Francis Ford Coppola", "Martin Scorsese", "Stanley Kubrick", "Alfred Hitchcock"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de 'Star Wars' (La Guerra de las Galaxias)?", 'respuestas' => ["George Lucas", "J.J. Abrams", "Steven Spielberg", "James Cameron"], 'correcta' => 0],
-            ['pregunta' => "¿Qué director es conocido por sus películas con estética simétrica y colores pastel?", 'respuestas' => ["Wes Anderson", "Tim Burton", "David Fincher", "Guillermo del Toro"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Pulp Fiction'?", 'respuestas' => ["Quentin Tarantino", "Guy Ritchie", "Robert Rodriguez", "Coen Brothers"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió la trilogía de 'El Señor de los Anillos'?", 'respuestas' => ["Peter Jackson", "George Lucas", "Ridley Scott", "James Cameron"], 'correcta' => 0],
-            ['pregunta' => "¿Qué director mexicano ganó el Oscar por 'La forma del agua'?", 'respuestas' => ["Guillermo del Toro", "Alfonso Cuarón", "Alejandro G. Iñárritu", "Emmanuel Lubezki"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Psicosis'?", 'respuestas' => ["Alfred Hitchcock", "Orson Welles", "Fritz Lang", "Billy Wilder"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Interstellar'?", 'respuestas' => ["Christopher Nolan", "Denis Villeneuve", "Ridley Scott", "Stanley Kubrick"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'El resplandor'?", 'respuestas' => ["Stanley Kubrick", "Stephen King", "John Carpenter", "Wes Craven"], 'correcta' => 0],
+            // 2. Datos Cine (Simplificados para evitar fallos de memoria/timeout)
+            $datosCine = [
+                ['pregunta' => "¿Quién dirigió 'Origen'?", 'respuestas' => ["Christopher Nolan", "Spielberg", "Tarantino", "Scorsese"], 'correcta' => 0],
+                ['pregunta' => "¿Quién interpretó a Iron Man?", 'respuestas' => ["Chris Evans", "Robert Downey Jr.", "Chris Hemsworth", "Mark Ruffalo"], 'correcta' => 1],
+                ['pregunta' => "¿Quién dirigió 'El Padrino'?", 'respuestas' => ["Francis Ford Coppola", "Martin Scorsese", "Stanley Kubrick", "Alfred Hitchcock"], 'correcta' => 0],
+                ['pregunta' => "¿En 'Matrix', qué pastilla elige Neo?", 'respuestas' => ["Azul", "Verde", "Roja", "Amarilla"], 'correcta' => 2],
+                ['pregunta' => "¿Quién es el padre de Luke Skywalker?", 'respuestas' => ["Darth Vader", "Obi-Wan Kenobi", "Yoda", "Han Solo"], 'correcta' => 0],
+                ['pregunta' => "¿Qué película de 1994 cuenta la historia de un juguete vaquero?", 'respuestas' => ["Toy Story", "Small Soldiers", "Lego Movie", "Cars"], 'correcta' => 0],
+                ['pregunta' => "¿Quién dirigió 'Psicosis'?", 'respuestas' => ["Alfred Hitchcock", "Orson Welles", "Fritz Lang", "Billy Wilder"], 'correcta' => 0],
+                ['pregunta' => "¿Cómo se llama el león protagonista de 'El Rey León'?", 'respuestas' => ["Mufasa", "Scar", "Simba", "Nala"], 'correcta' => 2],
+                ['pregunta' => "¿Qué actor dio vida al Joker en 'El caballero oscuro'?", 'respuestas' => ["Heath Ledger", "Joaquin Phoenix", "Jack Nicholson", "Jared Leto"], 'correcta' => 0],
+                ['pregunta' => "¿Quién dirigió 'Pulp Fiction'?", 'respuestas' => ["Quentin Tarantino", "Guy Ritchie", "Robert Rodriguez", "Coen Brothers"], 'correcta' => 0],
+            ];
 
-            // Actores y Personajes
-            ['pregunta' => "¿Cuál es el nombre del actor que interpreta a Iron Man?", 'respuestas' => ["Chris Evans", "Robert Downey Jr.", "Chris Hemsworth", "Mark Ruffalo"], 'correcta' => 1, 'imagen' => 'https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&q=80&w=400'],
-            ['pregunta' => "¿Quién interpreta a Jack Dawson en 'Titanic'?", 'respuestas' => ["Brad Pitt", "Johnny Depp", "Leonardo DiCaprio", "Tom Cruise"], 'correcta' => 2],
-            ['pregunta' => "¿Qué actor interpreta a Walter White en 'Breaking Bad'?", 'respuestas' => ["Aaron Paul", "Bryan Cranston", "Bob Odenkirk", "Dean Norris"], 'correcta' => 1],
-            ['pregunta' => "¿Quién da voz al Genio en la versión original de 'Aladdín' (1992)?", 'respuestas' => ["Robin Williams", "Eddie Murphy", "Jim Carrey", "Tom Hanks"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpretó al Joker en 'El caballero oscuro' (The Dark Knight)?", 'respuestas' => ["Heath Ledger", "Joaquin Phoenix", "Jack Nicholson", "Jared Leto"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Harry Potter en las películas?", 'respuestas' => ["Daniel Radcliffe", "Rupert Grint", "Elijah Wood", "Tom Holland"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actriz interpreta a Katniss Everdeen en 'Los juegos del hambre'?", 'respuestas' => ["Jennifer Lawrence", "Emma Stone", "Scarlett Johansson", "Kristen Stewart"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Neo en 'Matrix'?", 'respuestas' => ["Keanu Reeves", "Will Smith", "Brad Pitt", "Tom Cruise"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor es conocido por interpretar a Lobezno (Wolverine)?", 'respuestas' => ["Hugh Jackman", "Ryan Reynolds", "Patrick Stewart", "Ian McKellen"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Hermione Granger?", 'respuestas' => ["Emma Watson", "Emma Stone", "Emily Blunt", "Emilia Clarke"], 'correcta' => 0],
+            // 3. Datos Juegos
+            $datosJuegos = [
+                ['pregunta' => "¿Cuál es el nombre del protagonista de 'The Legend of Zelda'?", 'respuestas' => ["Zelda", "Link", "Ganon", "Epona"], 'correcta' => 1],
+                ['pregunta' => "¿Qué compañía desarrolló 'Fortnite'?", 'respuestas' => ["Activision", "EA", "Epic Games", "Ubisoft"], 'correcta' => 2],
+                ['pregunta' => "¿Quién es el fontanero hermano de Mario?", 'respuestas' => ["Wario", "Luigi", "Waluigi", "Toad"], 'correcta' => 1],
+                ['pregunta' => "¿Qué estudio desarrolló 'The Last of Us'?", 'respuestas' => ["Santa Monica", "Naughty Dog", "Insomniac", "Guerrilla"], 'correcta' => 1],
+                ['pregunta' => "¿Cuál es el videojuego más vendido de la historia?", 'respuestas' => ["GTA V", "Minecraft", "Tetris", "Wii Sports"], 'correcta' => 1],
+                ['pregunta' => "¿En qué juego aparece la ciudad de 'Rapture'?", 'respuestas' => ["BioShock", "Fallout", "Dishonored", "Borderlands"], 'correcta' => 0],
+                ['pregunta' => "¿Quién es el protagonista de 'God of War'?", 'respuestas' => ["Kratos", "Zeus", "Ares", "Hades"], 'correcta' => 0],
+                ['pregunta' => "¿Qué juego popularizó el género Battle Royale?", 'respuestas' => ["Fortnite", "PUBG", "Apex", "Warzone"], 'correcta' => 1],
+                ['pregunta' => "¿Cuál es la mascota de Sega?", 'respuestas' => ["Mario", "Sonic", "Crash", "Spyro"], 'correcta' => 1],
+                ['pregunta' => "¿Cómo se llama el Jefe Maestro en Halo?", 'respuestas' => ["John-117", "Cortana", "Noble 6", "Johnson"], 'correcta' => 0],
+            ];
 
-            // Trama y Detalles
-            ['pregunta' => "¿Qué película ganó el Oscar a Mejor Película en 2020?", 'respuestas' => ["1917", "Joker", "Parásitos", "Érase una vez en... Hollywood"], 'correcta' => 2],
-            ['pregunta' => "¿En qué año se estrenó la primera película de 'La Guerra de las Galaxias'?", 'respuestas' => ["1975", "1977", "1980", "1983"], 'correcta' => 1],
-            ['pregunta' => "¿Qué personaje dice la frase 'Yo soy tu padre'?", 'respuestas' => ["Yoda", "Emperador Palpatine", "Darth Vader", "Obi-Wan Kenobi"], 'correcta' => 2],
-            ['pregunta' => "¿En 'Matrix', qué pastilla elige Neo?", 'respuestas' => ["Azul", "Verde", "Roja", "Amarilla"], 'correcta' => 2],
-            ['pregunta' => "¿Qué película animada presenta a un robot llamado WALL-E?", 'respuestas' => ["Robots", "WALL-E", "Big Hero 6", "El gigante de hierro"], 'correcta' => 1],
-            ['pregunta' => "¿Cómo se llama el reino de 'Frozen'?", 'respuestas' => ["Arendelle", "Genovia", "Aldovia", "Florin"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Juego de Tronos', quién es la Madre de Dragones?", 'respuestas' => ["Cersei Lannister", "Sansa Stark", "Daenerys Targaryen", "Arya Stark"], 'correcta' => 2],
-            ['pregunta' => "¿Qué película de 1994 cuenta la historia de Forrest Gump?", 'respuestas' => ["Pulp Fiction", "Forrest Gump", "Cadena perpetua", "El Rey León"], 'correcta' => 1],
-            ['pregunta' => "¿Qué superhéroe es conocido como el 'Caballero Oscuro'?", 'respuestas' => ["Superman", "Batman", "Daredevil", "Caballero Luna"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es la primera regla de 'El club de la lucha'?", 'respuestas' => ["No hablar del club de la lucha", "Pelear sin camisa", "Solo dos personas por pelea", "Si alguien grita, la pelea termina"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje de Hannibal Lecter?", 'respuestas' => ["El silencio de los corderos", "Seven", "Zodiac", "Psicosis"], 'correcta' => 0],
-            ['pregunta' => "¿Qué objeto busca Indiana Jones en 'En busca del arca perdida'?", 'respuestas' => ["El Santo Grial", "El Arca de la Alianza", "La Calavera de Cristal", "El Diamante Hope"], 'correcta' => 1],
-            ['pregunta' => "¿Cómo se llama el león protagonista de 'El Rey León'?", 'respuestas' => ["Mufasa", "Scar", "Simba", "Nala"], 'correcta' => 2],
-            ['pregunta' => "¿Qué película cuenta la historia de un juguete vaquero llamado Woody?", 'respuestas' => ["Toy Story", "Pequeños guerreros", "La Lego película", "Cars"], 'correcta' => 0],
-            ['pregunta' => "¿En qué ciudad ficticia vive Batman?", 'respuestas' => ["Metrópolis", "Gotham", "Star City", "Central City"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el nombre del hobbit portador del anillo en 'El Señor de los Anillos'?", 'respuestas' => ["Frodo Bolsón", "Sam Gamyi", "Bilbo Bolsón", "Peregrin Tuk"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película comienza con la frase 'Hace mucho tiempo, en una galaxia muy, muy lejana...'?", 'respuestas' => ["Star Trek", "Star Wars", "Guardianes de la Galaxia", "Alien"], 'correcta' => 1],
-            ['pregunta' => "¿Qué actor ganó un Oscar póstumo por 'El caballero oscuro'?", 'respuestas' => ["Heath Ledger", "Philip Seymour Hoffman", "Chadwick Boseman", "Paul Walker"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película de Disney aparece la canción 'Bajo el mar'?", 'respuestas' => ["La Sirenita", "Buscando a Nemo", "Vaiana", "Atlantis"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el verdadero nombre de la Viuda Negra (Black Widow) en el MCU?", 'respuestas' => ["Natasha Romanoff", "Wanda Maximoff", "Carol Danvers", "Peggy Carter"], 'correcta' => 0],
-
-            // Nuevas Preguntas de Cine localizadas
-            ['pregunta' => "¿Quién dirigió 'Avatar'?", 'respuestas' => ["James Cameron", "Ridley Scott", "George Lucas", "Steven Spielberg"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película ganó el primer Oscar a Mejor Película Animada?", 'respuestas' => ["Shrek", "Toy Story", "Monstruos S.A.", "Ice Age"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se estrenó 'Titanic'?", 'respuestas' => ["1997", "1995", "1999", "1998"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Jack Sparrow en 'Piratas del Caribe'?", 'respuestas' => ["Johnny Depp", "Orlando Bloom", "Geoffrey Rush", "Javier Bardem"], 'correcta' => 0],
-            ['pregunta' => "¿Cómo se llama el villano de 'Vengadores: Infinity War'?", 'respuestas' => ["Thanos", "Loki", "Ultrón", "Hela"], 'correcta' => 0],
-            ['pregunta' => "¿Qué serie de TV se ambienta en el continente de Poniente (Westeros)?", 'respuestas' => ["Juego de Tronos", "The Witcher", "Vikingos", "The Last Kingdom"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de la serie 'Breaking Bad'?", 'respuestas' => ["Vince Gilligan", "David Chase", "Matthew Weiner", "Damon Lindelof"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor protagoniza 'Misión Imposible'?", 'respuestas' => ["Tom Cruise", "Brad Pitt", "Matt Damon", "Ben Affleck"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje de 'Dory'?", 'respuestas' => ["Buscando a Nemo", "La Sirenita", "El espantatiburones", "Vaiana"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es la película más taquillera de la historia (hasta 2024)?", 'respuestas' => ["Avatar", "Vengadores: Endgame", "Titanic", "Star Wars: El despertar de la Fuerza"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'La ciudad de las estrellas (La La Land)'?", 'respuestas' => ["Damien Chazelle", "Barry Jenkins", "Greta Gerwig", "Noah Baumbach"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de terror presenta al payaso Pennywise?", 'respuestas' => ["It", "Halloween", "Pesadilla en Elm Street", "Viernes 13"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Thor en el MCU?", 'respuestas' => ["Chris Hemsworth", "Chris Evans", "Chris Pratt", "Chris Pine"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película de 1999 la gente vive en una simulación?", 'respuestas' => ["Matrix", "Nivel 13", "Dark City", "eXistenZ"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película animada de Disney se basa en 'Hamlet'?", 'respuestas' => ["El Rey León", "Aladdín", "La Bella y la Bestia", "Pocahontas"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el padre de Luke Skywalker?", 'respuestas' => ["Darth Vader", "Obi-Wan Kenobi", "Yoda", "Han Solo"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actriz protagoniza 'La ciudad de las estrellas (La La Land)'?", 'respuestas' => ["Emma Stone", "Jennifer Lawrence", "Scarlett Johansson", "Margot Robbie"], 'correcta' => 0],
-            ['pregunta' => "¿En qué serie un profesor de química cocina metanfetamina?", 'respuestas' => ["Breaking Bad", "Better Call Saul", "Ozark", "Narcos"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre las emociones de una niña?", 'respuestas' => ["Del revés (Inside Out)", "Soul", "Coco", "Up"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Parásitos'?", 'respuestas' => ["Bong Joon-ho", "Park Chan-wook", "Kim Ki-duk", "Lee Chang-dong"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Deadpool?", 'respuestas' => ["Ryan Reynolds", "Hugh Jackman", "Chris Evans", "Paul Rudd"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje de 'Gollum'?", 'respuestas' => ["El Señor de los Anillos", "Harry Potter", "Las Crónicas de Narnia", "Eragon"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'E.T. el extraterrestre'?", 'respuestas' => ["Steven Spielberg", "George Lucas", "Robert Zemeckis", "Ron Howard"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1985 trata sobre viajes en el tiempo en un DeLorean?", 'respuestas' => ["Regreso al futuro", "Terminator", "Blade Runner", "Dune"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Once (Eleven) en 'Stranger Things'?", 'respuestas' => ["Millie Bobby Brown", "Winona Ryder", "Sadie Sink", "Natalia Dyer"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1993 trata sobre dinosaurios clonados?", 'respuestas' => ["Parque Jurásico", "Godzilla", "King Kong", "El mundo perdido"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Blade Runner' (1982)?", 'respuestas' => ["Ridley Scott", "Denis Villeneuve", "George Lucas", "Steven Spielberg"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Forrest Gump?", 'respuestas' => ["Tom Hanks", "Robin Williams", "Dustin Hoffman", "Harrison Ford"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Darth Vader'?", 'respuestas' => ["Star Wars", "Star Trek", "Battlestar Galactica", "Dune"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'La lista de Schindler'?", 'respuestas' => ["Steven Spielberg", "Roman Polanski", "Martin Scorsese", "Francis Ford Coppola"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney se desarrolla en Agrabah?", 'respuestas' => ["Aladdín", "Mulan", "Hércules", "Tarzán"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Lobezno en las películas de X-Men?", 'respuestas' => ["Hugh Jackman", "Liev Schreiber", "Ryan Reynolds", "Patrick Stewart"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película ganó el Oscar a Mejor Película en 2000?", 'respuestas' => ["Gladiator", "American Beauty", "Una mente maravillosa", "Chicago"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de 'Los Simpson'?", 'respuestas' => ["Matt Groening", "Seth MacFarlane", "Mike Judge", "Trey Parker"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Tony Stark?", 'respuestas' => ["Robert Downey Jr.", "Chris Evans", "Mark Ruffalo", "Jeremy Renner"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película de terror aparece el personaje 'Freddy Krueger'?", 'respuestas' => ["Pesadilla en Elm Street", "Viernes 13", "Halloween", "La matanza de Texas"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'El Gran Hotel Budapest'?", 'respuestas' => ["Wes Anderson", "Coen Brothers", "Paul Thomas Anderson", "Spike Jonze"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre un robot que limpia la Tierra?", 'respuestas' => ["WALL-E", "Robots", "Big Hero 6", "Cortocircuito"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Hermione Granger en Harry Potter?", 'respuestas' => ["Emma Watson", "Bonnie Wright", "Evanna Lynch", "Katie Leung"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1972 trata sobre la mafia italiana?", 'respuestas' => ["El Padrino", "Uno de los nuestros", "Casino", "El precio del poder"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'El club de la lucha'?", 'respuestas' => ["David Fincher", "Christopher Nolan", "Darren Aronofsky", "Guy Ritchie"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta al Joker en 'El caballero oscuro'?", 'respuestas' => ["Heath Ledger", "Joaquin Phoenix", "Jack Nicholson", "Jared Leto"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Buzz Lightyear'?", 'respuestas' => ["Toy Story", "Bichos", "Monstruos S.A.", "Cars"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió '2001: Una odisea del espacio'?", 'respuestas' => ["Stanley Kubrick", "Andrei Tarkovsky", "George Lucas", "Ridley Scott"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney se basa en 'La Reina de las Nieves'?", 'respuestas' => ["Frozen", "Enredados", "Brave", "Vaiana"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Neo en 'Matrix'?", 'respuestas' => ["Keanu Reeves", "Laurence Fishburne", "Hugo Weaving", "Joe Pantoliano"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1994 se desarrolla en la prisión de Shawshank?", 'respuestas' => ["Cadena perpetua", "La milla verde", "Fuga de Alcatraz", "Papillon"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el autor de los libros de 'Juego de Tronos'?", 'respuestas' => ["George R.R. Martin", "J.R.R. Tolkien", "J.K. Rowling", "Stephen King"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Indiana Jones?", 'respuestas' => ["Harrison Ford", "Sean Connery", "River Phoenix", "Shia LaBeouf"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Hannibal Lecter'?", 'respuestas' => ["El silencio de los corderos", "Seven", "Zodiac", "El dragón rojo"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Pulp Fiction'?", 'respuestas' => ["Quentin Tarantino", "Robert Rodriguez", "Kevin Smith", "Oliver Stone"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre un anciano y un niño explorador?", 'respuestas' => ["Up", "Coco", "Soul", "Del revés"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a la Viuda Negra en el MCU?", 'respuestas' => ["Scarlett Johansson", "Elizabeth Olsen", "Brie Larson", "Zoe Saldana"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1980 es el Episodio V de Star Wars?", 'respuestas' => ["El Imperio contraataca", "Una nueva esperanza", "El retorno del Jedi", "La amenaza fantasma"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'El resplandor'?", 'respuestas' => ["Stanley Kubrick", "Alfred Hitchcock", "Brian De Palma", "William Friedkin"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Jack Dawson en 'Titanic'?", 'respuestas' => ["Leonardo DiCaprio", "Brad Pitt", "Johnny Depp", "Matt Damon"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Gollum'?", 'respuestas' => ["El Señor de los Anillos", "El Hobbit", "Willow", "Legend"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Origen'?", 'respuestas' => ["Christopher Nolan", "Denis Villeneuve", "Ridley Scott", "James Cameron"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney trata sobre un león llamado Simba?", 'respuestas' => ["El Rey León", "El libro de la selva", "Tarzán", "Bambi"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Thor en el MCU?", 'respuestas' => ["Chris Hemsworth", "Tom Hiddleston", "Idris Elba", "Anthony Hopkins"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1999 trata sobre un club de peleas clandestino?", 'respuestas' => ["El club de la lucha", "Snatch: Cerdos y diamantes", "Lock & Stock", "Trainspotting"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de 'La Guerra de las Galaxias'?", 'respuestas' => ["George Lucas", "Steven Spielberg", "Francis Ford Coppola", "Martin Scorsese"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Batman en la trilogía de Nolan?", 'respuestas' => ["Christian Bale", "Ben Affleck", "Michael Keaton", "Robert Pattinson"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Vito Corleone'?", 'respuestas' => ["El Padrino", "Uno de los nuestros", "Casino", "Scarface"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Avatar'?", 'respuestas' => ["James Cameron", "Steven Spielberg", "George Lucas", "Peter Jackson"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre juguetes que cobran vida?", 'respuestas' => ["Toy Story", "Bichos", "Monstruos S.A.", "Cars"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta al Capitán América en el MCU?", 'respuestas' => ["Chris Evans", "Sebastian Stan", "Anthony Mackie", "Jeremy Renner"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1985 trata sobre viajes en el tiempo?", 'respuestas' => ["Regreso al futuro", "Terminator", "Blade Runner", "Cazafantasmas"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Psicosis'?", 'respuestas' => ["Alfred Hitchcock", "Orson Welles", "Fritz Lang", "Billy Wilder"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Spider-Man en el MCU?", 'respuestas' => ["Tom Holland", "Tobey Maguire", "Andrew Garfield", "Jake Gyllenhaal"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Marty McFly'?", 'respuestas' => ["Regreso al futuro", "De pelo en pecho", "El secreto de mi éxito", "Corazones de hierro"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'E.T. el extraterrestre'?", 'respuestas' => ["Steven Spielberg", "George Lucas", "Robert Zemeckis", "Ron Howard"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney trata sobre una sirena?", 'respuestas' => ["La Sirenita", "Vaiana", "Lilo & Stitch", "Atlantis"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Wonder Woman en el DCEU?", 'respuestas' => ["Gal Gadot", "Lynda Carter", "Amy Adams", "Margot Robbie"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1977 inició la saga Star Wars?", 'respuestas' => ["Una nueva esperanza", "El Imperio contraataca", "El retorno del Jedi", "La amenaza fantasma"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Uno de los nuestros' (Goodfellas)?", 'respuestas' => ["Martin Scorsese", "Francis Ford Coppola", "Brian De Palma", "Sergio Leone"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Deadpool?", 'respuestas' => ["Ryan Reynolds", "Hugh Jackman", "Josh Brolin", "Morena Baccarin"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Ellen Ripley'?", 'respuestas' => ["Alien, el octavo pasajero", "Terminator", "Blade Runner", "La cosa"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'El caballero oscuro'?", 'respuestas' => ["Christopher Nolan", "Zack Snyder", "Tim Burton", "Joel Schumacher"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre peces?", 'respuestas' => ["Buscando a Nemo", "El espantatiburones", "La Sirenita", "Luca"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Harry Potter?", 'respuestas' => ["Daniel Radcliffe", "Rupert Grint", "Tom Felton", "Matthew Lewis"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1991 ganó el Oscar a Mejor Película?", 'respuestas' => ["El silencio de los corderos", "La Bella y la Bestia", "JFK", "Bugsy"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el autor de 'El Señor de los Anillos'?", 'respuestas' => ["J.R.R. Tolkien", "C.S. Lewis", "George R.R. Martin", "J.K. Rowling"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Superman en 'El hombre de acero'?", 'respuestas' => ["Henry Cavill", "Brandon Routh", "Christopher Reeve", "Tom Welling"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Norman Bates'?", 'respuestas' => ["Psicosis", "Los pájaros", "Vértigo", "La ventana indiscreta"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Titanic'?", 'respuestas' => ["James Cameron", "Steven Spielberg", "George Lucas", "Ridley Scott"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney trata sobre una princesa con cabello largo?", 'respuestas' => ["Enredados", "Frozen", "Brave", "Vaiana"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Loki en el MCU?", 'respuestas' => ["Tom Hiddleston", "Chris Hemsworth", "Mark Ruffalo", "Benedict Cumberbatch"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1979 es un clásico de terror y ciencia ficción?", 'respuestas' => ["Alien, el octavo pasajero", "Star Trek: La película", "Moonraker", "Mad Max"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Seven'?", 'respuestas' => ["David Fincher", "Jonathan Demme", "Ridley Scott", "Michael Mann"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Gandalf?", 'respuestas' => ["Ian McKellen", "Christopher Lee", "Patrick Stewart", "Michael Gambon"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Sarah Connor'?", 'respuestas' => ["Terminator", "Aliens", "Desafío total", "RoboCop"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Interstellar'?", 'respuestas' => ["Christopher Nolan", "Alfonso Cuarón", "Denis Villeneuve", "Ridley Scott"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre superhéroes?", 'respuestas' => ["Los Increíbles", "Big Hero 6", "Megamind", "Gru, mi villano favorito"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Katniss Everdeen?", 'respuestas' => ["Jennifer Lawrence", "Shailene Woodley", "Emma Watson", "Kristen Stewart"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1999 ganó el Oscar a Mejor Película?", 'respuestas' => ["American Beauty", "El sexto sentido", "El dilema", "La milla verde"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es la autora de 'Harry Potter'?", 'respuestas' => ["J.K. Rowling", "Stephenie Meyer", "Suzanne Collins", "Veronica Roth"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Aquaman?", 'respuestas' => ["Jason Momoa", "Patrick Wilson", "Willem Dafoe", "Yahya Abdul-Mateen II"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Tyler Durden'?", 'respuestas' => ["El club de la lucha", "Seven", "Snatch", "American History X"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Forrest Gump'?", 'respuestas' => ["Robert Zemeckis", "Steven Spielberg", "Ron Howard", "Frank Darabont"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney trata sobre juguetes?", 'respuestas' => ["Toy Story", "Pinocho", "El conejo de terciopelo", "Pequeños guerreros"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Doctor Strange en el MCU?", 'respuestas' => ["Benedict Cumberbatch", "Mads Mikkelsen", "Chiwetel Ejiofor", "Benedict Wong"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1982 trata sobre un extraterrestre?", 'respuestas' => ["E.T. el extraterrestre", "La cosa", "Blade Runner", "Poltergeist"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Tiburón'?", 'respuestas' => ["Steven Spielberg", "George Lucas", "Francis Ford Coppola", "Brian De Palma"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Hulk en el MCU (actual)?", 'respuestas' => ["Mark Ruffalo", "Edward Norton", "Eric Bana", "Lou Ferrigno"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Rocky Balboa'?", 'respuestas' => ["Rocky", "Rambo", "Cobra", "Yo, el halcón"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Matrix'?", 'respuestas' => ["Las hermanas Wachowski", "James Cameron", "Ridley Scott", "George Lucas"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre un ratón cocinero?", 'respuestas' => ["Ratatouille", "Bichos", "Buscando a Nemo", "WALL-E"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Black Panther?", 'respuestas' => ["Chadwick Boseman", "Michael B. Jordan", "Daniel Kaluuya", "Winston Duke"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1968 es un clásico de ciencia ficción?", 'respuestas' => ["2001: Una odisea del espacio", "El planeta de los simios", "Barbarella", "Solaris"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Taxi Driver'?", 'respuestas' => ["Martin Scorsese", "Francis Ford Coppola", "Woody Allen", "Sidney Lumet"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a John Wick?", 'respuestas' => ["Keanu Reeves", "Liam Neeson", "Jason Statham", "Tom Cruise"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Travis Bickle'?", 'respuestas' => ["Taxi Driver", "Toro salvaje", "Malas calles", "El cabo del miedo"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Parásitos'?", 'respuestas' => ["Bong Joon-ho", "Park Chan-wook", "Kim Ki-duk", "Lee Chang-dong"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Disney trata sobre una familia de superhéroes?", 'respuestas' => ["Los Increíbles", "Big Hero 6", "Sky High", "Descubriendo a los Robinsons"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a la Bruja Escarlata (Scarlet Witch) en el MCU?", 'respuestas' => ["Elizabeth Olsen", "Scarlett Johansson", "Brie Larson", "Karen Gillan"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1975 trata sobre un tiburón asesino?", 'respuestas' => ["Tiburón", "Piraña", "Orca", "Deep Blue Sea"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'Alien, el octavo pasajero'?", 'respuestas' => ["Ridley Scott", "James Cameron", "David Fincher", "Jean-Pierre Jeunet"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a Star-Lord?", 'respuestas' => ["Chris Pratt", "Chris Evans", "Chris Hemsworth", "Chris Pine"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película aparece el personaje 'Rick Deckard'?", 'respuestas' => ["Blade Runner", "Star Wars", "Indiana Jones", "Air Force One"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió 'Gladiator'?", 'respuestas' => ["Ridley Scott", "Wolfgang Petersen", "Oliver Stone", "Mel Gibson"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de Pixar trata sobre coches de carreras?", 'respuestas' => ["Cars", "Aviones", "Turbo", "Speed Racer"], 'correcta' => 0],
-            ['pregunta' => "¿Quién interpreta a Thanos en el MCU?", 'respuestas' => ["Josh Brolin", "Vin Diesel", "Bradley Cooper", "Dave Bautista"], 'correcta' => 0],
-            ['pregunta' => "¿Qué película de 1960 es un clásico de terror?", 'respuestas' => ["Psicosis", "El fotógrafo del pánico", "Los pájaros", "La semilla del diablo"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el director de 'El silencio de los corderos'?", 'respuestas' => ["Jonathan Demme", "Ridley Scott", "David Fincher", "Michael Mann"], 'correcta' => 0],
-    
-            // EXTRA CINE USER DATA
-            ['pregunta' => "¿Qué película de 1917 fue filmada para que pareciera un solo plano secuencia?", 'respuestas' => ["1917", "Birdman", "La soga", "Dunkerque"], 'correcta' => 0],
-            ['pregunta' => "¿En qué película de terror de 1980 se usó por primera vez de forma masiva la 'Steadicam'?", 'respuestas' => ["El resplandor", "Halloween", "Viernes 13", "Alien"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál fue el primer largometraje de la historia animado íntegramente por ordenador?", 'respuestas' => ["Toy Story", "Bichos", "Shrek", "Antz"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor rechazó el Oscar a mejor actor por su papel en 'El Padrino'?", 'respuestas' => ["Marlon Brando", "Al Pacino", "Robert De Niro", "James Caan"], 'correcta' => 0],
-            ['pregunta' => "¿Quién dirigió la 'Trilogía del Dólar' (Por un puñado de dólares, etc.)?", 'respuestas' => ["Sergio Leone", "John Ford", "Clint Eastwood", "Howard Hawks"], 'correcta' => 0],
-            ['pregunta' => "¿Qué director es famoso por aparecer brevemente (cameo) en casi todas sus películas?", 'respuestas' => ["Alfred Hitchcock", "Steven Spielberg", "Martin Scorsese", "James Cameron"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre del sistema de inteligencia artificial que controla la nave en '2001: Una odisea del espacio'?", 'respuestas' => ["HAL 9000", "TARS", "VIKI", "Skynet"], 'correcta' => 0],
-            ['pregunta' => "¿Cómo se llama la cafetería donde se reúnen los protagonistas de 'Friends'?", 'respuestas' => ["Central Perk", "Monk's Diner", "MacLaren's Pub", "Cheers"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Breaking Bad', qué negocio utiliza Gus Fring como fachada para su imperio?", 'respuestas' => ["Los Pollos Hermanos", "Vamoose Pest Control", "A1 Quality Cashier", "Lavandería Brillante"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre real de la protagonista de 'Kill Bill'?", 'respuestas' => ["Beatrix Kiddo", "O-Ren Ishii", "Mia Wallace", "Elle Driver"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Interstellar', cómo se llama el planeta donde una hora equivale a siete años en la Tierra?", 'respuestas' => ["Planeta de Miller", "Planeta de Mann", "Planeta de Edmunds", "Pantassala"], 'correcta' => 0],
-            ['pregunta' => "¿Qué objeto utiliza Cobb en 'Origen' para saber si está en un sueño?", 'respuestas' => ["Una peonza", "Un dado", "Una moneda", "Un ajedrez"], 'correcta' => 0],
-            ['pregunta' => "¿En 'El Señor de los Anillos', quién es el encargado de forjar de nuevo la espada Narsil?", 'respuestas' => ["Los elfos de Rivendel", "Gimli en Erebor", "Gandalf el Blanco", "Galadriel"], 'correcta' => 0],
-            ['pregunta' => "¿Cómo se llama el Reino de la serie 'The Witcher' donde nació Geralt?", 'respuestas' => ["Kaer Morhen", "Cintra", "Rivia", "Temeria"], 'correcta' => 2],
-            ['pregunta' => "¿Qué película tiene el récord de más Oscars ganados (11), empatada con 'Ben-Hur' y 'Titanic'?", 'respuestas' => ["El Señor de los Anillos: El retorno del Rey", "La lista de Schindler", "Lo que el viento se llevó", "West Side Story"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actor interpreta a múltiples personajes en 'Dr. Strangelove'?", 'respuestas' => ["Peter Sellers", "Jack Lemmon", "Gregory Peck", "Humphrey Bogart"], 'correcta' => 0],
-            ['pregunta' => "¿En qué ciudad se desarrolla la acción de la serie 'The Wire'?", 'respuestas' => ["Baltimore", "Chicago", "Detroit", "Filadelfia"], 'correcta' => 0],
-            ['pregunta' => "¿Quién compuso la icónica banda sonora de 'El bueno, el feo y el malo'?", 'respuestas' => ["Ennio Morricone", "John Williams", "Hans Zimmer", "Howard Shore"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál fue la primera película del Universo Cinematográfico de Marvel (MCU)?", 'respuestas' => ["Iron Man", "Capitán América: El primer vengador", "Thor", "El increíble Hulk"], 'correcta' => 0],
-            ['pregunta' => "¿Qué actriz ostenta el récord de más premios Oscar ganados (4)?", 'respuestas' => ["Katharine Hepburn", "Meryl Streep", "Frances McDormand", "Ingrid Bergman"], 'correcta' => 0],
-        ];
-    
-        // Videojuegos
-        $datosJuegos = [
-            // EXTRA JUEGOS USER DATA
-            ['pregunta' => "¿Cuál fue el nombre original de Mario antes de llamarse así en el juego 'Donkey Kong'?", 'respuestas' => ["Jumpman", "Mr. Video", "Luigi Prototype", "Plumber Boy"], 'correcta' => 0],
-            ['pregunta' => "¿Qué consola de SEGA fue la primera en incluir un módem interno para jugar online?", 'respuestas' => ["Dreamcast", "Saturn", "Mega Drive", "Master System"], 'correcta' => 0],
-            ['pregunta' => "¿Cómo se llamaba el periférico de Nintendo 64 que solo salió en Japón y usaba discos magnéticos?", 'respuestas' => ["64DD", "Satellaview", "N64 Disc", "Power Drive"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se fundó la compañía Blizzard Entertainment?", 'respuestas' => ["1991", "1994", "1989", "1996"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál fue el primer juego de la historia en usar la técnica de 'Cel-shading' para sus gráficos?", 'respuestas' => ["Fear Effect", "Jet Set Radio", "The Legend of Zelda: Wind Waker", "Okami"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el nombre del mundo donde se desarrolla la saga 'The Elder Scrolls'?", 'respuestas' => ["Nirn", "Tamriel", "Oblivion", "Skyrim"], 'correcta' => 0],
-            ['pregunta' => "¿En la saga 'BioShock', qué sustancia otorga poderes genéticos al jugador?", 'respuestas' => ["ADAM", "EVE", "Vigor", "Plásmido"], 'correcta' => 0],
-            ['pregunta' => "¿Cómo se llama el caballo de Geralt de Rivia en 'The Witcher 3'?", 'respuestas' => ["Sardinilla (Roach)", "Epona", "Agro", "Sombra"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Metal Gear Solid', cuál es el nombre real de Solid Snake?", 'respuestas' => ["David", "Jack", "Eli", "George"], 'correcta' => 0],
-            ['pregunta' => "¿Qué personaje de 'League of Legends' es conocido como el 'Ciego Monje'?", 'respuestas' => ["Lee Sin", "Master Yi", "Yasuo", "Jax"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Silent Hill 2', qué representa el monstruo Pyramid Head?", 'respuestas' => ["El sentimiento de culpa de James", "El miedo a la muerte", "La represión sexual", "Un antiguo dios local"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre de la corporación enemiga principal en la saga 'Resident Evil'?", 'respuestas' => ["Umbrella Corporation", "Abstergo", "Aperture Science", "Shinra"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Dark Souls', quién es el caballero que nos ayuda y busca su propio sol?", 'respuestas' => ["Solaire de Astora", "Siegmeyer de Catarina", "Oscar de Astora", "Patches"], 'correcta' => 0],
-            ['pregunta' => "¿Qué motor gráfico utiliza la mayoría de los juegos de la saga 'Borderlands'?", 'respuestas' => ["Unreal Engine", "Unity", "RE Engine", "Frostbite"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Final Fantasy VII', cómo se llama el arma final de Cloud Strife?", 'respuestas' => ["Artesana (Ultima Weapon)", "Buster Sword", "Masamune", "Ragnarok"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre del lenguaje ficticio que hablan los personajes en 'The Sims'?", 'respuestas' => ["Simlish", "Simtalk", "Hylian", "Dovahzul"], 'correcta' => 0],
-            ['pregunta' => "¿En 'God of War' (trilogía original), qué objeto le da a Kratos la capacidad de volar?", 'respuestas' => ["Las Alas de Ícaro", "Las Botas de Hermes", "El Vellocino de Oro", "La Cabeza de Medusa"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Valve introdujo por primera vez el concepto de 'Sombreros' como cosméticos?", 'respuestas' => ["Team Fortress 2", "Counter-Strike", "Dota 2", "Portal 2"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre de la inteligencia artificial que guía al Jefe Maestro en Halo?", 'respuestas' => ["Cortana", "Serina", "Isabel", "The Weapon"], 'correcta' => 0],
-            ['pregunta' => "¿En 'Fallout', cómo se llama el dispositivo de muñeca que gestiona el inventario y mapa?", 'respuestas' => ["Pip-Boy", "Vault-Tec Manager", "Wrist-Com", "Pokedex"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el videojuego más vendido de la historia?", 'respuestas' => ["Grand Theft Auto V", "Minecraft", "Tetris", "Wii Sports"], 'correcta' => 1, 'imagen' => 'https://images.unsplash.com/photo-1605898835373-cf19709d8af9?auto=format&fit=crop&q=80&w=400'],
-            ['pregunta' => "¿Cómo se llama el protagonista de la saga 'The Legend of Zelda'?", 'respuestas' => ["Zelda", "Link", "Ganon", "Epona"], 'correcta' => 1],
-            ['pregunta' => "¿Qué compañía desarrolló 'Fortnite'?", 'respuestas' => ["Activision", "Electronic Arts", "Epic Games", "Ubisoft"], 'correcta' => 2],
-            ['pregunta' => "¿En qué año se lanzó la primera PlayStation en Japón/EE.UU.?", 'respuestas' => ["1994", "1996", "1998", "2000"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre del fontanero hermano de Mario?", 'respuestas' => ["Wario", "Luigi", "Waluigi", "Toad"], 'correcta' => 1],
-            ['pregunta' => "¿Qué juego popularizó el género 'Battle Royale'?", 'respuestas' => ["Fortnite", "PUBG", "Apex Legends", "Call of Duty: Warzone"], 'correcta' => 1],
-            ['pregunta' => "¿Cómo se llama el Jefe Maestro en Halo?", 'respuestas' => ["John-117", "Cortana", "Noble 6", "Sargento Johnson"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio desarrolló 'The Last of Us'?", 'respuestas' => ["Santa Monica Studio", "Naughty Dog", "Insomniac Games", "Guerrilla Games"], 'correcta' => 1],
-            ['pregunta' => "¿En 'God of War' (2018), cómo llama Kratos a su hijo?", 'respuestas' => ["Atreus", "Chico (Boy)", "Loki", "Hijo"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el Pokémon número 25 en la Pokédex?", 'respuestas' => ["Bulbasaur", "Charmander", "Pikachu", "Squirtle"], 'correcta' => 2],
-            ['pregunta' => "¿Qué personaje es la mascota de Sega?", 'respuestas' => ["Mario", "Sonic", "Crash Bandicoot", "Spyro"], 'correcta' => 1],
-            ['pregunta' => "¿En qué juego aparece la ciudad sumergida de 'Rapture'?", 'respuestas' => ["BioShock", "Fallout", "Dishonored", "Borderlands"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el arma principal de Gordon Freeman en Half-Life?", 'respuestas' => ["Palanca", "Escopeta", "Pistola de Gravedad", "Ballesta"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego indie trata sobre un niño que cae al subsuelo lleno de monstruos?", 'respuestas' => ["Hollow Knight", "Celeste", "Undertale", "Limbo"], 'correcta' => 2],
-            ['pregunta' => "¿Cómo se llama la princesa del Reino Champiñón?", 'respuestas' => ["Daisy", "Estela (Rosalina)", "Peach", "Zelda"], 'correcta' => 2],
-            ['pregunta' => "¿Qué juego de cartas digital es del universo de Warcraft?", 'respuestas' => ["Gwent", "Hearthstone", "Legends of Runeterra", "Artifact"], 'correcta' => 1],
-            ['pregunta' => "¿En qué juego debes 'Hacerte con todos'?", 'respuestas' => ["Digimon", "Yo-Kai Watch", "Pokémon", "Monster Rancher"], 'correcta' => 2],
-            ['pregunta' => "¿Qué personaje de Nintendo es un gorila con corbata?", 'respuestas' => ["King Kong", "Donkey Kong", "Winston", "Grodd"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el juego de fútbol más popular de EA Sports?", 'respuestas' => ["PES", "FIFA (ahora EA FC)", "Dream League", "Winning Eleven"], 'correcta' => 1],
-            ['pregunta' => "¿Qué juego de disparos táctico cuenta con agentes como Jett y Phoenix?", 'respuestas' => ["CS:GO", "Overwatch", "Valorant", "Rainbow Six Siege"], 'correcta' => 2],
-
-            // RDR2
-            ['pregunta' => "¿Quién es el protagonista de 'Red Dead Redemption 2'?", 'respuestas' => ["John Marston", "Dutch van der Linde", "Arthur Morgan", "Micah Bell"], 'correcta' => 2],
-            ['pregunta' => "¿En qué año transcurre la historia principal de Red Dead Redemption 2?", 'respuestas' => ["1899", "1911", "1885", "1905"], 'correcta' => 0],
-            ['pregunta' => "¿Qué banda lidera Dutch van der Linde?", 'respuestas' => ["O'Driscolls", "Banda de Van der Linde", "Pinkertons", "Lemoyne Raiders"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el nombre de la ciudad industrial en RDR2 inspirada en New Orleans?", 'respuestas' => ["Blackwater", "Valentine", "Saint Denis", "Rhodes"], 'correcta' => 2],
-            ['pregunta' => "¿Qué enfermedad contrae Arthur Morgan?", 'respuestas' => ["Tuberculosis", "Cólera", "Neumonía", "Disentería"], 'correcta' => 0],
-
-            // Más Juegos
-            ['pregunta' => "¿Qué juego ganó el GOTY (Juego del Año) en 2022?", 'respuestas' => ["God of War Ragnarök", "Elden Ring", "Horizon Forbidden West", "Stray"], 'correcta' => 1],
-            ['pregunta' => "¿Quién es el villano principal (IA) de la saga Portal?", 'respuestas' => ["GLaDOS", "Wheatley", "Cave Johnson", "Chell"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego controlas a un gato en una ciudad cyberpunk?", 'respuestas' => ["Stray", "Cat Quest", "Night in the Woods", "Tunic"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego es conocido por su dificultad y sus hogueras?", 'respuestas' => ["Dark Souls", "Skyrim", "The Witcher", "Dragon Age"], 'correcta' => 0],
-            ['pregunta' => "¿Qué personaje dice 'It's-a me, Mario!'?", 'respuestas' => ["Luigi", "Mario", "Wario", "Toad"], 'correcta' => 1],
-            ['pregunta' => "¿Qué compañía creó la consola Switch?", 'respuestas' => ["Nintendo", "Sony", "Microsoft", "Sega"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el juego más vendido de la consola PlayStation 2?", 'respuestas' => ["Grand Theft Auto: San Andreas", "Gran Turismo 3", "Final Fantasy X", "Metal Gear Solid 2"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de la saga 'Uncharted'?", 'respuestas' => ["Nathan Drake", "Lara Croft", "Indiana Jones", "Joel Miller"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Pikachu'?", 'respuestas' => ["Pokémon", "Digimon", "Yo-Kai Watch", "Monster Hunter"], 'correcta' => 0],
-            ['pregunta' => "¿Qué videojuego popularizó el género MOBA?", 'respuestas' => ["League of Legends", "Dota 2", "Heroes of the Storm", "Smite"], 'correcta' => 1],
-            ['pregunta' => "¿Cuál es el nombre del hermano de Mario?", 'respuestas' => ["Luigi", "Wario", "Waluigi", "Toad"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego de terror te persigue 'Pyramid Head'?", 'respuestas' => ["Silent Hill 2", "Resident Evil", "Outlast", "Amnesia"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego construyes y destruyes bloques?", 'respuestas' => ["Minecraft", "Roblox", "Terraria", "Lego Worlds"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el villano principal de la saga 'Sonic the Hedgehog'?", 'respuestas' => ["Dr. Eggman", "Bowser", "Ganondorf", "Sephiroth"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Blizzard es un shooter por equipos?", 'respuestas' => ["Overwatch", "Team Fortress 2", "Valorant", "Paladins"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó 'World of Warcraft'?", 'respuestas' => ["2004", "2002", "2006", "2000"], 'correcta' => 0],
-            ['pregunta' => "¿Qué personaje es conocido como 'El Fantasma de Esparta'?", 'respuestas' => ["Kratos", "Dante", "Bayonetta", "Ryu Hayabusa"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre de la princesa en 'Super Mario Bros'?", 'respuestas' => ["Peach", "Daisy", "Zelda", "Estela"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de FromSoftware ganó el GOTY en 2019?", 'respuestas' => ["Sekiro: Shadows Die Twice", "Bloodborne", "Dark Souls III", "Elden Ring"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Metal Gear Solid'?", 'respuestas' => ["Solid Snake", "Big Boss", "Raiden", "Ocelot"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de lucha incluye el movimiento 'Hadouken'?", 'respuestas' => ["Street Fighter", "Mortal Kombat", "Tekken", "King of Fighters"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego exploras el planeta '4546B' bajo el agua?", 'respuestas' => ["Subnautica", "Abzû", "No Man's Sky", "Beyond Blue"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Rockstar se ambienta en el salvaje oeste?", 'respuestas' => ["Red Dead Redemption", "Gun", "Call of Juarez", "Desperados"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador original de 'Minecraft'?", 'respuestas' => ["Markus Persson (Notch)", "Hideo Kojima", "Shigeru Miyamoto", "Gabe Newell"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de cartas se juega dentro de 'The Witcher 3'?", 'respuestas' => ["Gwent", "Hearthstone", "Poker", "Blackjack"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el nombre del erizo azul de Sega?", 'respuestas' => ["Sonic", "Shadow", "Knuckles", "Tails"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de disparos en primera persona revolucionó el género en 1993?", 'respuestas' => ["Doom", "Wolfenstein 3D", "Quake", "Duke Nukem 3D"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego debes sobrevivir a animatrónicos en una pizzería?", 'respuestas' => ["Five Nights at Freddy's", "Slender: The Arrival", "Poppy Playtime", "Bendy and the Ink Machine"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de simulación social te permite gestionar una isla desierta?", 'respuestas' => ["Animal Crossing: New Horizons", "Stardew Valley", "Harvest Moon", "The Sims"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de la saga 'Kingdom Hearts'?", 'respuestas' => ["Sora", "Riku", "Kairi", "Roxas"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego popularizó el género Battle Royale?", 'respuestas' => ["PUBG", "Fortnite", "H1Z1", "Apex Legends"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de la saga 'Metal Gear'?", 'respuestas' => ["Hideo Kojima", "Shigeru Miyamoto", "Shinji Mikami", "Hideki Kamiya"], 'correcta' => 0],
-            ['pregunta' => "¿Qué personaje es la mascota de Nintendo?", 'respuestas' => ["Mario", "Link", "Pikachu", "Donkey Kong"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece la ciudad de 'Rapture'?", 'respuestas' => ["BioShock", "Fallout", "Dishonored", "Prey"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'God of War'?", 'respuestas' => ["Kratos", "Zeus", "Ares", "Hades"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Blizzard es un MMORPG?", 'respuestas' => ["World of Warcraft", "Diablo", "StarCraft", "Overwatch"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la primera Xbox en EE.UU.?", 'respuestas' => ["2001", "2000", "2002", "1999"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el villano principal de 'Final Fantasy VII'?", 'respuestas' => ["Sefirot (Sephiroth)", "Kefka", "Ultimecia", "Kuja"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Rockstar se ambienta en la ciudad de Los Santos?", 'respuestas' => ["Grand Theft Auto V", "Red Dead Redemption 2", "L.A. Noire", "Bully"], 'correcta' => 0],
-            ['pregunta' => "¿Cuál es el Pokémon número 1 en la Pokédex?", 'respuestas' => ["Bulbasaur", "Ivysaur", "Venusaur", "Charmander"], 'correcta' => 0],
-            ['pregunta' => "¿Qué personaje es conocido como 'Jefe Maestro'?", 'respuestas' => ["John-117", "Cortana", "Inquisidor", "Sgt. Johnson"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego de terror debes escapar de 'Pyramid Head'?", 'respuestas' => ["Silent Hill 2", "Resident Evil 2", "Outlast", "The Evil Within"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio polaco desarrolló 'The Witcher 3'?", 'respuestas' => ["CD Projekt Red", "Bethesda", "BioWare", "Ubisoft"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Valve es un shooter de zombis cooperativo?", 'respuestas' => ["Left 4 Dead", "Half-Life", "Portal", "Team Fortress 2"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó 'Super Mario 64'?", 'respuestas' => ["1996", "1995", "1997", "1998"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de la saga 'Halo'?", 'respuestas' => ["Jefe Maestro", "Noble Seis", "El Novato", "Locke"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Bethesda se ambienta en un mundo post-apocalíptico?", 'respuestas' => ["Fallout", "The Elder Scrolls", "Starfield", "Doom"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'GLaDOS'?", 'respuestas' => ["Portal", "Half-Life", "Team Fortress 2", "Left 4 Dead"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador de 'Super Smash Bros.'?", 'respuestas' => ["Masahiro Sakurai", "Shigeru Miyamoto", "Satoru Iwata", "Reggie Fils-Aimé"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Capcom es el pionero del survival horror?", 'respuestas' => ["Resident Evil", "Devil May Cry", "Monster Hunter", "Street Fighter"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la PlayStation 4?", 'respuestas' => ["2013", "2012", "2014", "2015"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'The Legend of Zelda'?", 'respuestas' => ["Link", "Zelda", "Ganondorf", "Impa"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Mojang permite construir con bloques?", 'respuestas' => ["Minecraft", "Terraria", "Roblox", "Lego Worlds"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Solid Snake'?", 'respuestas' => ["Metal Gear Solid", "Splinter Cell", "Syphon Filter", "Hitman"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio desarrolló 'Dark Souls'?", 'respuestas' => ["FromSoftware", "Bandai Namco", "Square Enix", "Capcom"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Naughty Dog trata sobre el cazador de tesoros Nathan Drake?", 'respuestas' => ["Uncharted", "The Last of Us", "Crash Bandicoot", "Jak and Daxter"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la Nintendo Switch?", 'respuestas' => ["2017", "2016", "2018", "2019"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el villano principal de 'Super Mario Bros.'?", 'respuestas' => ["Bowser", "Wario", "Waluigi", "Rey Boo"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Epic Games es un Battle Royale masivo?", 'respuestas' => ["Fortnite", "PUBG", "Apex Legends", "Call of Duty: Warzone"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece la arqueóloga 'Lara Croft'?", 'respuestas' => ["Tomb Raider", "Uncharted", "Horizon Zero Dawn", "Mirror's Edge"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'Overwatch'?", 'respuestas' => ["Blizzard Entertainment", "Valve", "Riot Games", "Ubisoft"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Bungie es un shooter de ciencia ficción espacial?", 'respuestas' => ["Destiny", "Halo", "Marathon", "Myth"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó originalmente 'Grand Theft Auto V'?", 'respuestas' => ["2013", "2012", "2014", "2015"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Assassin's Creed II'?", 'respuestas' => ["Ezio Auditore", "Altaïr Ibn-La'Ahad", "Connor Kenway", "Edward Kenway"], 'correcta' => 0],
-            ['pregunta' => "¿Qué famosa saga de RPG es propiedad de Square Enix?", 'respuestas' => ["Final Fantasy", "Dragon Quest", "Kingdom Hearts", "Chrono Trigger"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Geralt de Rivia'?", 'respuestas' => ["The Witcher", "Skyrim", "Dragon Age", "Fable"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'League of Legends'?", 'respuestas' => ["Riot Games", "Valve", "Blizzard", "Epic Games"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Konami era el gran rival de FIFA?", 'respuestas' => ["Pro Evolution Soccer (PES)", "FIFA", "Dream League Soccer", "Football Manager"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la Xbox 360?", 'respuestas' => ["2005", "2004", "2006", "2007"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es la protagonista de 'Metroid'?", 'respuestas' => ["Samus Aran", "Ridley", "Mother Brain", "Kraid"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Ubisoft trata sobre asesinos a través de la historia?", 'respuestas' => ["Assassin's Creed", "Prince of Persia", "Watch Dogs", "Far Cry"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Cloud Strife'?", 'respuestas' => ["Final Fantasy VII", "Kingdom Hearts", "Dissidia", "Ehrgeiz"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio creó la saga 'Call of Duty'?", 'respuestas' => ["Infinity Ward", "Treyarch", "Sledgehammer Games", "Raven Software"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de EA es un simulador de vida?", 'respuestas' => ["Los Sims", "SimCity", "Spore", "MySims"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la PlayStation 3?", 'respuestas' => ["2006", "2005", "2007", "2008"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Splinter Cell'?", 'respuestas' => ["Sam Fisher", "Solid Snake", "Gabe Logan", "Agente 47"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de 2K es el simulador de baloncesto líder?", 'respuestas' => ["NBA 2K", "NBA Live", "NBA Jam", "NBA Street"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Arthas Menethil'?", 'respuestas' => ["Warcraft III", "World of Warcraft", "Heroes of the Storm", "Hearthstone"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'Cyberpunk 2077'?", 'respuestas' => ["CD Projekt Red", "Bethesda", "BioWare", "Ubisoft"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Sega está protagonizado por un erizo azul?", 'respuestas' => ["Sonic the Hedgehog", "Alex Kidd", "Nights into Dreams", "Ristar"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó 'The Elder Scrolls V: Skyrim'?", 'respuestas' => ["2011", "2010", "2012", "2013"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Doom'?", 'respuestas' => ["Doom Slayer", "B.J. Blazkowicz", "Ranger", "Bitterman"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Capcom es de peleas callejeras?", 'respuestas' => ["Street Fighter", "Final Fight", "Rival Schools", "Darkstalkers"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece la agente 'Jill Valentine'?", 'respuestas' => ["Resident Evil", "Dino Crisis", "Parasite Eve", "Silent Hill"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio desarrolló 'Elden Ring' junto a George R.R. Martin?", 'respuestas' => ["FromSoftware", "Bandai Namco", "Square Enix", "Capcom"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Nintendo trata sobre Luigi atrapando fantasmas?", 'respuestas' => ["Luigi's Mansion", "Cazafantasmas", "Fatal Frame", "Phasmophobia"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la Game Boy original?", 'respuestas' => ["1989", "1988", "1990", "1991"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Devil May Cry'?", 'respuestas' => ["Dante", "Nero", "Vergil", "Trish"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Sony trata sobre Kratos, el dios de la guerra?", 'respuestas' => ["God of War", "Heavenly Sword", "Dante's Inferno", "Asura's Wrath"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Ellie'?", 'respuestas' => ["The Last of Us", "Uncharted", "Horizon Zero Dawn", "Tomb Raider"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'Red Dead Redemption 2'?", 'respuestas' => ["Rockstar Games", "Ubisoft", "Bethesda", "Naughty Dog"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Bandai Namco es de lucha con armas?", 'respuestas' => ["SoulCalibur", "Tekken", "Dragon Ball FighterZ", "Naruto Shippuden"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó el fenómeno 'Fortnite'?", 'respuestas' => ["2017", "2016", "2018", "2019"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es la protagonista de 'Horizon Zero Dawn'?", 'respuestas' => ["Aloy", "Lara Croft", "Samus Aran", "Jill Valentine"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Activision es el shooter bélico más famoso?", 'respuestas' => ["Call of Duty", "Battlefield", "Medal of Honor", "Brothers in Arms"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Crash Bandicoot'?", 'respuestas' => ["Crash Bandicoot", "Spyro the Dragon", "Jak and Daxter", "Ratchet & Clank"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'Among Us'?", 'respuestas' => ["Innersloth", "Supercell", "Rovio", "King"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Microsoft se centra en las carreras de coches?", 'respuestas' => ["Forza Horizon", "Gran Turismo", "Need for Speed", "Burnout"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la PlayStation 5?", 'respuestas' => ["2020", "2019", "2021", "2022"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Persona 5'?", 'respuestas' => ["Joker", "Yu Narukami", "Makoto Yuki", "Tatsuya Suou"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Nintendo trata sobre carreras de karts?", 'respuestas' => ["Mario Kart", "Diddy Kong Racing", "Crash Team Racing", "Sonic & All-Stars Racing"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece la bola rosa llamada 'Kirby'?", 'respuestas' => ["Kirby", "Super Smash Bros.", "Yoshi's Island", "Donkey Kong Country"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló el metroidvania 'Hollow Knight'?", 'respuestas' => ["Team Cherry", "Moon Studios", "Supergiant Games", "Yacht Club Games"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Valve es un MOBA masivo?", 'respuestas' => ["Dota 2", "League of Legends", "Heroes of the Storm", "Smite"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año salió la versión completa de 'Minecraft'?", 'respuestas' => ["2011", "2009", "2010", "2012"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'BioShock Infinite'?", 'respuestas' => ["Booker DeWitt", "Jack", "Subject Delta", "Elizabeth"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Square Enix mezcla Disney y Final Fantasy?", 'respuestas' => ["Kingdom Hearts", "Dissidia", "World of Final Fantasy", "The World Ends with You"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el dragoncito 'Spyro'?", 'respuestas' => ["Spyro the Dragon", "Crash Bandicoot", "Ratchet & Clank", "Jak and Daxter"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el creador único de 'Stardew Valley'?", 'respuestas' => ["ConcernedApe", "Chucklefish", "Team17", "Re-Logic"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Capcom trata sobre cazar monstruos gigantes?", 'respuestas' => ["Monster Hunter", "Dragon's Dogma", "Lost Planet", "Dead Rising"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó la Xbox Series X?", 'respuestas' => ["2020", "2019", "2021", "2022"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Sekiro: Shadows Die Twice'?", 'respuestas' => ["Lobo (Wolf)", "Genichiro", "Isshin", "Búho"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Nintendo trata sobre combates espaciales con naves?", 'respuestas' => ["Star Fox", "Metroid", "F-Zero", "Pikmin"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el personaje 'Mega Man'?", 'respuestas' => ["Mega Man", "Castlevania", "Contra", "Metroid"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló 'Rocket League'?", 'respuestas' => ["Psyonix", "Epic Games", "Valve", "Ubisoft"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Konami es un referente del terror psicológico?", 'respuestas' => ["Silent Hill", "Resident Evil", "Fatal Frame", "Siren"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó el primer 'Overwatch'?", 'respuestas' => ["2016", "2015", "2017", "2018"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Ghost of Tsushima'?", 'respuestas' => ["Jin Sakai", "Khotun Khan", "Lord Shimura", "Yuna"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de Sony está protagonizada por un ladrón mapache?", 'respuestas' => ["Sly Cooper", "Ratchet & Clank", "Jak and Daxter", "Crash Bandicoot"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego aparece el lombax 'Ratchet'?", 'respuestas' => ["Ratchet & Clank", "Jak and Daxter", "Sly Cooper", "Spyro the Dragon"], 'correcta' => 0],
-            ['pregunta' => "¿Qué estudio desarrolló el difícil 'Cuphead'?", 'respuestas' => ["Studio MDHR", "Team Cherry", "Yacht Club Games", "Supergiant Games"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Nintendo trata sobre estrategia con pequeñas criaturas planta?", 'respuestas' => ["Pikmin", "Animal Crossing", "Harvest Moon", "Stardew Valley"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó 'Valorant'?", 'respuestas' => ["2020", "2019", "2021", "2022"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es la protagonista de 'Control'?", 'respuestas' => ["Jesse Faden", "Alan Wake", "Max Payne", "Jack Joyce"], 'correcta' => 0],
-            ['pregunta' => "¿Qué juego de Ubisoft es un shooter táctico de 5 contra 5?", 'respuestas' => ["Rainbow Six Siege", "Ghost Recon", "The Division", "Splinter Cell"], 'correcta' => 0],
-            ['pregunta' => "¿En qué juego de lucha aparece 'Sub-Zero'?", 'respuestas' => ["Mortal Kombat", "Street Fighter", "Tekken", "SoulCalibur"], 'correcta' => 0],
-            ['pregunta' => "¿Quién desarrolló el premiado roguelike 'Hades'?", 'respuestas' => ["Supergiant Games", "Team Cherry", "Motion Twin", "Mega Crit"], 'correcta' => 0],
-            ['pregunta' => "¿Qué saga de BioWare trata sobre una epopeya espacial con el Comandante Shepard?", 'respuestas' => ["Mass Effect", "Star Wars Battlefront", "Dead Space", "Titanfall"], 'correcta' => 0],
-            ['pregunta' => "¿En qué año se lanzó 'Apex Legends'?", 'respuestas' => ["2019", "2018", "2020", "2021"], 'correcta' => 0],
-            ['pregunta' => "¿Quién es el protagonista de 'Dead Space'?", 'respuestas' => ["Isaac Clarke", "Gordon Freeman", "Jefe Maestro", "Doom Slayer"], 'correcta' => 0]
-        ];
-
-        // FUNCIÓN AUXILIAR PARA INSERCIÓN MASIVA (Para evitar timeouts)
-        $insertBulk = function($cuestionarioId, $datos) {
-            foreach ($datos as $dato) {
-                // Insertamos la pregunta y obtenemos ID
-                $preguntaId = DB::table('preguntas')->insertGetId([
-                    'cuestionario_id' => $cuestionarioId,
-                    'texto_pregunta' => $dato['pregunta'],
-                    'imagen_url' => $dato['imagen'] ?? null,
-                    'tiempo_limite_segundos' => 20,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                // Preparamos el bloque de respuestas
-                $respuestas = [];
-                foreach ($dato['respuestas'] as $index => $texto) {
-                    $respuestas[] = [
-                        'pregunta_id' => $preguntaId,
-                        'texto_respuesta' => $texto,
-                        'es_correcta' => ($index === $dato['correcta']),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
+            // Función de inserción rápida
+            $fastInsert = function($cId, $datos) {
+                foreach ($datos as $d) {
+                    $pId = DB::table('preguntas')->insertGetId([
+                        'cuestionario_id' => $cId,
+                        'texto_pregunta' => $d['pregunta'],
+                        'created_at' => now(), 'updated_at' => now()
+                    ]);
+                    $resps = [];
+                    foreach ($d['respuestas'] as $i => $t) {
+                        $resps[] = [
+                            'pregunta_id' => $pId, 'texto_respuesta' => $t,
+                            'es_correcta' => ($i === $d['correcta']),
+                            'created_at' => now(), 'updated_at' => now()
+                        ];
+                    }
+                    DB::table('respuestas')->insert($resps);
                 }
-                
-                // Insertamos todas las respuestas de esta pregunta en una sola operación
-                DB::table('respuestas')->insert($respuestas);
-            }
-        };
+            };
 
-        // Ejecutar inserciones optimizadas
-        $insertBulk($cuestionarioCine->id, $datosCine);
-        $insertBulk($cuestionarioJuegos->id, $datosJuegos);
-
-        // Modo Mixto: Selección aleatoria de ambos
-        $datosMixto = array_merge(
-            array_slice($datosCine, 10, 40),
-            array_slice($datosJuegos, 10, 40)
-        );
-        shuffle($datosMixto);
-        $insertBulk($cuestionarioMixto->id, $datosMixto);
+            $fastInsert($cCine->id, $datosCine);
+            $fastInsert($cJuegos->id, $datosJuegos);
+            $fastInsert($cMixto->id, array_merge($datosCine, $datosJuegos));
+        });
     }
 }
