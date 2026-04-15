@@ -39,11 +39,23 @@ Route::get('/anime/popular', [MedioController::class, 'getAnimeMixed']);
 Route::get('/anime/search', [MedioController::class, 'searchAnimeMixed']);
 Route::get('/dashboard/summary', [MedioController::class, 'getDashboardSummary']);
 
-// --- Ruta Temporal para Seeding (Sin Shell) ---
+// --- Ruta Temporal para Seeding Mejorada ---
 Route::get('/system/seed-trivia', function() {
     try {
         \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'TriviaSeeder', '--force' => true]);
-        return response()->json(['success' => true, 'message' => \Illuminate\Support\Facades\Artisan::output()]);
+        
+        $cine = \App\Models\Pregunta::where('cuestionario_id', 1)->count(); // IDs asumiendo base limpia
+        $juegos = \App\Models\Pregunta::where('cuestionario_id', 2)->count();
+        
+        return response()->json([
+            'success' => true, 
+            'message' => 'Base de datos poblada con éxito',
+            'counts' => [
+                'cine_y_series' => \DB::table('preguntas')->join('cuestionarios', 'preguntas.cuestionario_id', '=', 'cuestionarios.id')->where('cuestionarios.categoria', 'peliculas_y_series')->count(),
+                'videojuegos' => \DB::table('preguntas')->join('cuestionarios', 'preguntas.cuestionario_id', '=', 'cuestionarios.id')->where('cuestionarios.categoria', 'videojuegos')->count(),
+                'mixto' => \DB::table('preguntas')->join('cuestionarios', 'preguntas.cuestionario_id', '=', 'cuestionarios.id')->where('cuestionarios.categoria', 'mixto')->count(),
+            ]
+        ]);
     } catch (\Exception $e) {
         return response()->json(['success' => false, 'message' => $e->getMessage()]);
     }

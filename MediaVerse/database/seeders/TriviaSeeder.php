@@ -428,65 +428,46 @@ class TriviaSeeder extends Seeder
             ['pregunta' => "¿Quién es el protagonista de 'Dead Space'?", 'respuestas' => ["Isaac Clarke", "Gordon Freeman", "Jefe Maestro", "Doom Slayer"], 'correcta' => 0]
         ];
 
-        // Insertar datos
-        // Insertar Cine
-        foreach ($datosCine as $dato) {
-            $pregunta = Pregunta::create([
-                'cuestionario_id' => $cuestionarioCine->id,
-                'texto_pregunta' => $dato['pregunta'],
-                'imagen_url' => $dato['imagen'] ?? null,
-                'tiempo_limite_segundos' => 20
-            ]);
-
-            foreach ($dato['respuestas'] as $index => $textoRespuesta) {
-                Respuesta::create([
-                    'pregunta_id' => $pregunta->id,
-                    'texto_respuesta' => $textoRespuesta,
-                    'es_correcta' => ($index === $dato['correcta'])
+        // FUNCIÓN AUXILIAR PARA INSERCIÓN MASIVA (Para evitar timeouts)
+        $insertBulk = function($cuestionarioId, $datos) {
+            foreach ($datos as $dato) {
+                // Insertamos la pregunta y obtenemos ID
+                $preguntaId = DB::table('preguntas')->insertGetId([
+                    'cuestionario_id' => $cuestionarioId,
+                    'texto_pregunta' => $dato['pregunta'],
+                    'imagen_url' => $dato['imagen'] ?? null,
+                    'tiempo_limite_segundos' => 20,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
+
+                // Preparamos el bloque de respuestas
+                $respuestas = [];
+                foreach ($dato['respuestas'] as $index => $texto) {
+                    $respuestas[] = [
+                        'pregunta_id' => $preguntaId,
+                        'texto_respuesta' => $texto,
+                        'es_correcta' => ($index === $dato['correcta']),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                
+                // Insertamos todas las respuestas de esta pregunta en una sola operación
+                DB::table('respuestas')->insert($respuestas);
             }
-        }
+        };
 
-        // Insertar Videojuegos
-        foreach ($datosJuegos as $dato) {
-            $pregunta = Pregunta::create([
-                'cuestionario_id' => $cuestionarioJuegos->id,
-                'texto_pregunta' => $dato['pregunta'],
-                'imagen_url' => $dato['imagen'] ?? null,
-                'tiempo_limite_segundos' => 20
-            ]);
+        // Ejecutar inserciones optimizadas
+        $insertBulk($cuestionarioCine->id, $datosCine);
+        $insertBulk($cuestionarioJuegos->id, $datosJuegos);
 
-            foreach ($dato['respuestas'] as $index => $textoRespuesta) {
-                Respuesta::create([
-                    'pregunta_id' => $pregunta->id,
-                    'texto_respuesta' => $textoRespuesta,
-                    'es_correcta' => ($index === $dato['correcta'])
-                ]);
-            }
-        }
-
-        // Insertar Mixto (cogemos preguntas de ambos pools)
+        // Modo Mixto: Selección aleatoria de ambos
         $datosMixto = array_merge(
             array_slice($datosCine, 10, 40),
             array_slice($datosJuegos, 10, 40)
         );
         shuffle($datosMixto);
-
-        foreach ($datosMixto as $dato) {
-            $pregunta = Pregunta::create([
-                'cuestionario_id' => $cuestionarioMixto->id,
-                'texto_pregunta' => $dato['pregunta'],
-                'imagen_url' => $dato['imagen'] ?? null,
-                'tiempo_limite_segundos' => 15 // Más difícil = menos tiempo
-            ]);
-
-            foreach ($dato['respuestas'] as $index => $textoRespuesta) {
-                Respuesta::create([
-                    'pregunta_id' => $pregunta->id,
-                    'texto_respuesta' => $textoRespuesta,
-                    'es_correcta' => ($index === $dato['correcta'])
-                ]);
-            }
-        }
+        $insertBulk($cuestionarioMixto->id, $datosMixto);
     }
 }

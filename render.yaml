@@ -1,10 +1,10 @@
 services:
   - type: web
     name: mediaverse-api-backend
-    env: php
+    env: docker
     rootDir: MediaVerse
-    buildCommand: composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan db:seed --class=FixGamesTriviaSeeder --force
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    dockerContext: .
+    dockerfilePath: Dockerfile
     envVars:
       - key: APP_ENV
         value: production
