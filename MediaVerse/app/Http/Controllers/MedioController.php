@@ -1617,5 +1617,4 @@ class MedioController extends Controller
             ];
         });
     }
-    }
 }
