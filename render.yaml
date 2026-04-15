@@ -3,7 +3,7 @@ services:
     name: mediaverse-api-backend
     env: php
     rootDir: MediaVerse
-    buildCommand: composer install --no-dev --optimize-autoloader
+    buildCommand: composer install --no-dev --optimize-autoloader && php artisan migrate --force && php artisan db:seed --class=FixGamesTriviaSeeder --force
     startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
     envVars:
       - key: APP_ENV
