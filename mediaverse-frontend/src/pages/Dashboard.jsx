@@ -21,46 +21,53 @@ function Dashboard() {
 
     const fetchData = async () => {
       setLoading(true);
-      try {
-        const [resMovies, resSeries, resGames, resThreads] = await Promise.all([
-          api.get('/movies/latest'),
-          api.get('/tv/latest'),
-          api.get('/games/latest'),
-          api.get('/threads?dashboard=true')
-        ]);
+      const MAX_RETRIES = 4;
+      const RETRY_DELAY = 8000;
 
-        if (resMovies.data.success) setPopularMovies(resMovies.data.data.slice(0, 10));
-        if (resSeries.data.success) setPopularSeries(resSeries.data.data.slice(0, 10));
-        if (resGames.data.success) setPopularGames(resGames.data.data.slice(0, 10));
-        if (resThreads.data.success) setLatestThreads(resThreads.data.data);
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const [resMovies, resSeries, resGames, resThreads] = await Promise.all([
+            api.get('/movies/latest'),
+            api.get('/tv/latest'),
+            api.get('/games/latest'),
+            api.get('/threads?dashboard=true')
+          ]);
 
-        // Combinamos las novedades para la sección destacada (Hero)
-        const hot = [
-          ...(resMovies.data.data?.slice(0, 3).map(m => ({ ...m, type: 'movie' })) || []),
-          ...(resSeries.data.data?.slice(0, 2).map(s => ({ ...s, type: 'tv' })) || []),
-          ...(resGames.data.data?.slice(0, 2).map(g => ({ ...g, type: 'game' })) || [])
-        ];
-        
-        setTrending(hot);
+          if (resMovies.data.success) setPopularMovies(resMovies.data.data.slice(0, 10));
+          if (resSeries.data.success) setPopularSeries(resSeries.data.data.slice(0, 10));
+          if (resGames.data.success) setPopularGames(resGames.data.data.slice(0, 10));
+          if (resThreads.data.success) setLatestThreads(resThreads.data.data);
 
-        // Si el usuario está logueado, obtenemos sus estadísticas de interacción
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          const resInter = await api.get('/interactions/me');
-          if (resInter.data.success) {
-            const data = resInter.data.data;
-            setStats({
-              visto: data.visto?.length || 0,
-              favorito: data.favorito?.length || 0,
-              pendiente: data.ver_mas_tarde?.length || 0
-            });
+          // Combinamos las novedades para la sección destacada (Hero)
+          const hot = [
+            ...(resMovies.data.data?.slice(0, 3).map(m => ({ ...m, type: 'movie' })) || []),
+            ...(resSeries.data.data?.slice(0, 2).map(s => ({ ...s, type: 'tv' })) || []),
+            ...(resGames.data.data?.slice(0, 2).map(g => ({ ...g, type: 'game' })) || [])
+          ];
+          setTrending(hot);
+
+          // Si el usuario está logueado, obtenemos sus estadísticas de interacción
+          const token = localStorage.getItem('auth_token');
+          if (token) {
+            const resInter = await api.get('/interactions/me');
+            if (resInter.data.success) {
+              const data = resInter.data.data;
+              setStats({
+                visto: data.visto?.length || 0,
+                favorito: data.favorito?.length || 0,
+                pendiente: data.ver_mas_tarde?.length || 0
+              });
+            }
+          }
+          break; // éxito, salimos del bucle
+        } catch (err) {
+          console.error(`Dashboard fetch attempt ${attempt} failed:`, err);
+          if (attempt < MAX_RETRIES) {
+            await new Promise(res => setTimeout(res, RETRY_DELAY));
           }
         }
-      } catch (err) {
-        console.error("Error al cargar dashboard:", err);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
     fetchData();
@@ -76,10 +83,13 @@ function Dashboard() {
   }, [trending, activeSlide]); // Reseteamos el intervalo si hay interacción manual para evitar saltos bruscos
 
   if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '80vh', color: 'white', gap: '20px' }}>
       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ fontSize: '40px' }}>
         <i className="fa-solid fa-circle-notch"></i>
       </motion.div>
+      <p style={{ color: '#888', fontSize: '14px', textAlign: 'center', maxWidth: '300px' }}>
+        Despertando el servidor... esto puede tardar unos segundos la primera vez.
+      </p>
     </div>
   );
 
