@@ -701,6 +701,8 @@ class MedioController extends Controller
             // SIN FILTROS: popularity_primitives (lo más popular ahora mismo en IGDB)
             $cacheKey = "popular_games_primitives_v2_{$page}";
             $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset) {
+                $ahora = now()->timestamp;
+
                 // Paso 1: IDs de los juegos más populares ahora mismo (visitas en IGDB)
                 // Pedimos más de 20 por si algunos son juegos no lanzados aún y hay que descartarlos
                 $popularQuery = "fields game_id, value, popularity_type;
@@ -713,35 +715,45 @@ class MedioController extends Controller
                     ->withBody($popularQuery, 'text/plain')
                     ->post('https://api.igdb.com/v4/popularity_primitives');
 
-                if ($popularResponse->failed() || empty($popularResponse->json()))
-                    return null;
+                // Si popularity_primitives funciona, usamos ese ranking
+                if (!$popularResponse->failed() && !empty($popularResponse->json())) {
+                    $popularData = $popularResponse->json();
+                    $gameIds = implode(',', array_column($popularData, 'game_id'));
 
-                $popularData = $popularResponse->json();
-                $gameIds = implode(',', array_column($popularData, 'game_id'));
-                $ahora = now()->timestamp;
+                    // Paso 2: Detalles de esos juegos — solo los ya lanzados
+                    $gamesQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                        where id = ({$gameIds}) & cover != null & first_release_date <= {$ahora} & category = 0;
+                        limit 20;";
 
-                // Paso 2: Detalles de esos juegos — solo los ya lanzados (first_release_date <= ahora)
-                $gamesQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
-                    where id = ({$gameIds}) & cover != null & first_release_date <= {$ahora} & category = 0;
-                    limit 20;";
+                    $gamesResponse = Http::withoutVerifying()
+                        ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                        ->withBody($gamesQuery, 'text/plain')
+                        ->post('https://api.igdb.com/v4/games');
 
-                $gamesResponse = Http::withoutVerifying()
+                    if (!$gamesResponse->failed() && !empty($gamesResponse->json())) {
+                        $games = $gamesResponse->json();
+                        $popularityOrder = array_flip(array_column($popularData, 'game_id'));
+                        usort($games, function ($a, $b) use ($popularityOrder) {
+                            $posA = $popularityOrder[$a['id']] ?? 999;
+                            $posB = $popularityOrder[$b['id']] ?? 999;
+                            return $posA <=> $posB;
+                        });
+                        return ['results' => $games, 'total_results' => 500];
+                    }
+                }
+
+                // FALLBACK: juegos más jugados del último año ordenados por total_rating_count
+                $haceUnAnio = now()->subYear()->timestamp;
+                $fallbackQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                    where cover != null & category = 0 & first_release_date >= {$haceUnAnio} & first_release_date <= {$ahora};
+                    sort total_rating_count desc; limit 20; offset {$offset};";
+
+                $fallbackResponse = Http::withoutVerifying()
                     ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
-                    ->withBody($gamesQuery, 'text/plain')
+                    ->withBody($fallbackQuery, 'text/plain')
                     ->post('https://api.igdb.com/v4/games');
 
-                if ($gamesResponse->failed()) return null;
-
-                // Reordenamos según el ranking de popularidad original
-                $games = $gamesResponse->json();
-                $popularityOrder = array_flip(array_column($popularData, 'game_id'));
-                usort($games, function ($a, $b) use ($popularityOrder) {
-                    $posA = $popularityOrder[$a['id']] ?? 999;
-                    $posB = $popularityOrder[$b['id']] ?? 999;
-                    return $posA <=> $posB;
-                });
-
-                return ['results' => $games, 'total_results' => 500];
+                return $fallbackResponse->failed() ? null : ['results' => $fallbackResponse->json(), 'total_results' => 500];
             });
 
             if (!$cachedData)
