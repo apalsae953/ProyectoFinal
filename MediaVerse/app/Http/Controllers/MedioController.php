@@ -1576,7 +1576,7 @@ class MedioController extends Controller
     {
         // Cache por 1 hora (3600 seg) para máxima velocidad
         // Usamos una versión de caché distinta para forzar la actualización con los campos nuevos
-        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v11', 3600, function () use ($request) {
+        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v12', 3600, function () use ($request) {
             $data = [
                 'movies' => [],
                 'series' => [],

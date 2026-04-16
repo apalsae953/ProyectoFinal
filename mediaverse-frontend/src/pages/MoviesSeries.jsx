@@ -368,12 +368,12 @@ function MoviesSeries() {
                     </div>
 
                     {totalPaginas > 1 && (
-                        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
-                            <button onClick={() => cambiarPagina(paginaActual - 1)} disabled={paginaActual === 1} style={{ padding: '12px 25px', backgroundColor: paginaActual === 1 ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
-                                <i className="fa-solid fa-arrow-left"></i> Anterior
+                        <div className="pagination-controls" style={{ marginTop: '40px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
+                            <button className="pagination-btn" onClick={() => cambiarPagina(paginaActual - 1)} disabled={paginaActual === 1} style={{ padding: '12px 25px', backgroundColor: paginaActual === 1 ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
+                                <i className="fa-solid fa-arrow-left"></i> <span className="pagination-btn-text">Anterior</span>
                             </button>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1a1a1a', padding: '8px 15px', borderRadius: '30px', border: '1px solid #333' }}>
+                            <div className="pagination-info" style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1a1a1a', padding: '8px 15px', borderRadius: '30px', border: '1px solid #333' }}>
                                 <span style={{ color: '#888', fontSize: '14px' }}>Pág.</span>
                                 <input
                                     type="number"
@@ -404,8 +404,8 @@ function MoviesSeries() {
                                 <span style={{ color: '#888', fontSize: '14px' }}>de {totalPaginas}</span>
                             </div>
 
-                            <button onClick={() => cambiarPagina(paginaActual + 1)} disabled={paginaActual === totalPaginas} style={{ padding: '12px 25px', backgroundColor: paginaActual === totalPaginas ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === totalPaginas ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
-                                Siguiente <i className="fa-solid fa-arrow-right"></i>
+                            <button className="pagination-btn" onClick={() => cambiarPagina(paginaActual + 1)} disabled={paginaActual === totalPaginas} style={{ padding: '12px 25px', backgroundColor: paginaActual === totalPaginas ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === totalPaginas ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
+                                <span className="pagination-btn-text">Siguiente</span> <i className="fa-solid fa-arrow-right"></i>
                             </button>
                         </div>
                     )}
