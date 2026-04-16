@@ -169,8 +169,10 @@ function MoviesSeries() {
                     {modo === 'movies' ? (
                         <>
                             <option value="28">Acción</option>
-                            <option value="12">Aventura</option>
                             <option value="16">Animación</option>
+                            <option value="12">Aventura</option>
+                            <option value="10752">Bélico</option>
+                            <option value="878">Ciencia Ficción</option>
                             <option value="35">Comedia</option>
                             <option value="80">Crimen</option>
                             <option value="99">Documental</option>
@@ -178,14 +180,12 @@ function MoviesSeries() {
                             <option value="10751">Familia</option>
                             <option value="14">Fantasía</option>
                             <option value="36">Historia</option>
-                            <option value="27">Terror</option>
-                            <option value="10402">Música</option>
                             <option value="9648">Misterio</option>
-                            <option value="10749">Romance</option>
-                            <option value="878">Ciencia Ficción</option>
+                            <option value="10402">Música</option>
                             <option value="10770">Película de TV</option>
+                            <option value="10749">Romance</option>
                             <option value="53">Suspense</option>
-                            <option value="10752">Bélico</option>
+                            <option value="27">Terror</option>
                             <option value="37">Western</option>
                         </>
                     ) : (
@@ -197,14 +197,14 @@ function MoviesSeries() {
                             <option value="99">Documental</option>
                             <option value="18">Drama</option>
                             <option value="10751">Familia</option>
+                            <option value="10768">Guerra y Política</option>
                             <option value="10762">Infantil</option>
                             <option value="9648">Misterio</option>
                             <option value="10763">Noticias</option>
                             <option value="10764">Reality Show</option>
                             <option value="10765">Sci-Fi y Fantasía</option>
-                            <option value="10766">Telenovela</option>
                             <option value="10767">Talk Show</option>
-                            <option value="10768">Guerra y Política</option>
+                            <option value="10766">Telenovela</option>
                             <option value="37">Western</option>
                         </>
                     )}
