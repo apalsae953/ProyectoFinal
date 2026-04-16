@@ -29,13 +29,13 @@ function MoviesSeries() {
     });
 
     useEffect(() => {
-        if(localStorage.getItem('auth_token')) {
+        if (localStorage.getItem('auth_token')) {
             api.get('/interactions/me').then(res => {
                 const data = res.data.data;
                 const tipoActual = modo === 'movies' ? 'pelicula' : 'serie';
-                if(data.visto) setVistos(data.visto.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
-                if(data.ver_mas_tarde) setVerMasTarde(data.ver_mas_tarde.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
-                if(data.valoraciones) setValoraciones(data.valoraciones.filter(v => v.medio?.tipo === tipoActual).map(v => ({api_id: Number(v.medio?.api_id), score: v.puntuacion})));
+                if (data.visto) setVistos(data.visto.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
+                if (data.ver_mas_tarde) setVerMasTarde(data.ver_mas_tarde.filter(i => i.medio?.tipo === tipoActual).map(i => Number(i.medio?.api_id)));
+                if (data.valoraciones) setValoraciones(data.valoraciones.filter(v => v.medio?.tipo === tipoActual).map(v => ({ api_id: Number(v.medio?.api_id), score: v.puntuacion })));
             }).catch(console.error);
         }
     }, [modo]); // Listar al cambiar de modo
@@ -48,15 +48,15 @@ function MoviesSeries() {
         }
 
         // Optimistic UI Update para no tener latencia visual (Mutuamente exclusivos)
-        if(toggleTipo === 'visto') {
-            if(!vistos.includes(peli.id)) {
+        if (toggleTipo === 'visto') {
+            if (!vistos.includes(peli.id)) {
                 setVistos(prev => [...prev, peli.id]);
                 setVerMasTarde(prev => prev.filter(id => id !== peli.id));
             } else {
                 setVistos(prev => prev.filter(id => id !== peli.id));
             }
-        } else if(toggleTipo === 'verMasTarde') {
-            if(!verMasTarde.includes(peli.id)) {
+        } else if (toggleTipo === 'verMasTarde') {
+            if (!verMasTarde.includes(peli.id)) {
                 setVerMasTarde(prev => [...prev, peli.id]);
                 setVistos(prev => prev.filter(id => id !== peli.id));
             } else {
@@ -141,11 +141,11 @@ function MoviesSeries() {
         <div style={{ textAlign: 'center', paddingTop: '0', paddingBottom: '40px' }}>
             {/* SELECTORES DE MODO (PELIS / SERIES) */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '15px' }}>
-                <button 
+                <button
                     onClick={() => { setModo('movies'); setPaginaActual(1); setBusqueda(''); setFiltros({ genre: '', year: '', sort: 'popularity.desc' }); }}
                     style={{ ...estiloBotonModo, borderBottom: modo === 'movies' ? '3px solid #e50914' : 'none', color: modo === 'movies' ? '#e50914' : 'white' }}
                 ><i className="fa-solid fa-film"></i> Películas</button>
-                <button 
+                <button
                     onClick={() => { setModo('tv'); setPaginaActual(1); setBusqueda(''); setFiltros({ genre: '', year: '', sort: 'popularity.desc' }); }}
                     style={{ ...estiloBotonModo, borderBottom: modo === 'tv' ? '3px solid #e50914' : 'none', color: modo === 'tv' ? '#e50914' : 'white' }}
                 ><i className="fa-solid fa-tv"></i> Series</button>
@@ -157,10 +157,10 @@ function MoviesSeries() {
 
             {/* FILTROS (ARRIBA) */}
             <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
-                <select 
-                    value={filtros.genre} 
+                <select
+                    value={filtros.genre}
                     onChange={(e) => {
-                        setFiltros({...filtros, genre: e.target.value});
+                        setFiltros({ ...filtros, genre: e.target.value });
                         setPaginaActual(1);
                     }}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none', transition: 'all 0.3s' }}
@@ -172,50 +172,73 @@ function MoviesSeries() {
                             <option value="12">Aventura</option>
                             <option value="16">Animación</option>
                             <option value="35">Comedia</option>
+                            <option value="80">Crimen</option>
+                            <option value="99">Documental</option>
                             <option value="18">Drama</option>
+                            <option value="10751">Familia</option>
+                            <option value="14">Fantasía</option>
+                            <option value="36">Historia</option>
                             <option value="27">Terror</option>
+                            <option value="10402">Música</option>
+                            <option value="9648">Misterio</option>
+                            <option value="10749">Romance</option>
                             <option value="878">Ciencia Ficción</option>
+                            <option value="10770">Película de TV</option>
+                            <option value="53">Suspense</option>
+                            <option value="10752">Bélico</option>
+                            <option value="37">Western</option>
                         </>
                     ) : (
                         <>
                             <option value="10759">Acción y Aventura</option>
                             <option value="16">Animación</option>
                             <option value="35">Comedia</option>
+                            <option value="80">Crimen</option>
+                            <option value="99">Documental</option>
                             <option value="18">Drama</option>
+                            <option value="10751">Familia</option>
+                            <option value="10762">Infantil</option>
+                            <option value="9648">Misterio</option>
+                            <option value="10763">Noticias</option>
+                            <option value="10764">Reality Show</option>
                             <option value="10765">Sci-Fi y Fantasía</option>
+                            <option value="10766">Telenovela</option>
+                            <option value="10767">Talk Show</option>
+                            <option value="10768">Guerra y Política</option>
+                            <option value="37">Western</option>
                         </>
                     )}
                 </select>
 
-                <select 
-                    value={filtros.year} 
+                <select
+                    value={filtros.year}
                     onChange={(e) => {
-                        setFiltros({...filtros, year: e.target.value});
+                        setFiltros({ ...filtros, year: e.target.value });
                         setPaginaActual(1);
                     }}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
                     <option value="">Año</option>
-                    {Array.from({length: 45}, (_, i) => 2026 - i).map(y => (
+                    {Array.from({ length: 45 }, (_, i) => 2026 - i).map(y => (
                         <option key={y} value={y}>{y}</option>
                     ))}
                 </select>
 
-                <select 
-                    value={filtros.sort} 
+                <select
+                    value={filtros.sort}
                     onChange={(e) => {
-                        setFiltros({...filtros, sort: e.target.value});
+                        setFiltros({ ...filtros, sort: e.target.value });
                         setPaginaActual(1);
                     }}
                     style={{ padding: '12px 20px', borderRadius: '25px', border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', cursor: 'pointer', outline: 'none' }}
                 >
                     <option value="popularity.desc">Más Populares</option>
                     <option value="vote_average.desc">Mejor Valoradas</option>
-                    <option value="primary_release_date.desc">Más Recientes</option>
+                    <option value={modo === 'movies' ? 'primary_release_date.desc' : 'first_air_date.desc'}>Más Recientes</option>
                 </select>
 
                 {(filtros.genre || filtros.year || filtros.sort !== 'popularity.desc') && (
-                    <button 
+                    <button
                         onClick={() => setFiltros({ genre: '', year: '', sort: 'popularity.desc' })}
                         style={{ padding: '12px 25px', borderRadius: '25px', border: 'none', backgroundColor: '#333', color: 'white', cursor: 'pointer', transition: 'background 0.3s' }}
                     >
@@ -328,7 +351,7 @@ function MoviesSeries() {
                                     <span style={{ color: '#66cc33', fontSize: '0.85rem' }}>
                                         <i className="fa-solid fa-star"></i> {peli.vote_average ? peli.vote_average.toFixed(1) : 'N/A'}
                                     </span>
-                                    
+
                                     {/* NOTA PERSONAL (AZUL Y CHICA) */}
                                     {valoraciones.find(v => v.api_id === peli.id) && (
                                         <span style={{ color: '#2196f3', fontSize: '0.75rem', backgroundColor: 'rgba(33, 150, 243, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
@@ -347,15 +370,15 @@ function MoviesSeries() {
                             <button onClick={() => cambiarPagina(paginaActual - 1)} disabled={paginaActual === 1} style={{ padding: '12px 25px', backgroundColor: paginaActual === 1 ? '#555' : '#e50914', color: 'white', border: 'none', borderRadius: '30px', cursor: paginaActual === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
                                 <i className="fa-solid fa-arrow-left"></i> Anterior
                             </button>
-                            
+
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1a1a1a', padding: '8px 15px', borderRadius: '30px', border: '1px solid #333' }}>
                                 <span style={{ color: '#888', fontSize: '14px' }}>Pág.</span>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max={totalPaginas} 
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={totalPaginas}
                                     defaultValue={paginaActual}
-                                    key={paginaActual} 
+                                    key={paginaActual}
                                     onBlur={(e) => {
                                         const valor = parseInt(e.target.value);
                                         if (valor && valor >= 1 && valor <= totalPaginas) {
