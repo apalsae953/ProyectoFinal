@@ -904,7 +904,7 @@ class MedioController extends Controller
             $accessToken = $this->getIgdbToken();
             if (!$accessToken)
                 return response()->json(['success' => false, 'message' => 'Error IGDB Token'], 500);
-            $data = \Illuminate\Support\Facades\Cache::remember('latest_games_dashboard_v7', 1800, function () use ($accessToken) {
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_games_dashboard_v8', 1800, function () use ($accessToken) {
                 $hace90Dias = now()->subDays(90)->timestamp;
                 $manana = now()->addDay()->timestamp;
                 // Equilibrio: Juegos de los últimos 3 meses pero ORDENADOS por popularidad real
@@ -919,6 +919,7 @@ class MedioController extends Controller
             if (!$data)
                 return response()->json(['success' => true, 'data' => []], 200);
             $formatted = $this->formatIgdbGames($data);
+            $formatted = $this->mergeWithLocalRatings($formatted, 'videojuego');
             return response()->json(['success' => true, 'data' => $formatted], 200);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
