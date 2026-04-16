@@ -1575,47 +1575,92 @@ class MedioController extends Controller
 
     public function getDashboardSummary(Request $request)
     {
-        // Cache por 1 hora (3600 seg) para máxima velocidad
-        // Usamos una versión de caché distinta para forzar la actualización con los campos nuevos
-        return \Illuminate\Support\Facades\Cache::remember('dashboard_full_data_v13', 3600, function () use ($request) {
-            $data = [
+        // Caché solo para los datos crudos de API externa (TMDB/IGDB) — 30 minutos
+        // Los ratings de usuarios se calculan SIEMPRE frescos (consulta BD barata)
+        $raw = \Illuminate\Support\Facades\Cache::remember('dashboard_raw_api_v1', 1800, function () {
+            $raw = [
                 'movies' => [],
                 'series' => [],
                 'games'  => [],
                 'threads' => []
             ];
 
-            // 1. Películas
+            // 1. Películas (datos crudos TMDB, sin ratings locales)
             try {
-                $moviesRes = $this->getLatestMovies($request);
-                $data['movies'] = $moviesRes->getData()->data ?? [];
-            } catch (\Exception $e) { \Log::error("Dashboard Movies Error"); }
+                $token = config('services.tmdb.key');
+                $data = \Illuminate\Support\Facades\Cache::remember('latest_movies_spain_v1', 1800, function () use ($token) {
+                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()->get('https://api.themoviedb.org/3/movie/now_playing', [
+                        'api_key' => $token, 'language' => 'es-ES', 'region' => 'ES'
+                    ]);
+                    return $response->failed() ? ['results' => []] : $response->json();
+                });
+                $results = $data['results'] ?? [];
+                foreach ($results as &$item)
+                    $item['year'] = isset($item['release_date']) ? substr($item['release_date'], 0, 4) : 'N/A';
+                $raw['movies'] = $results;
+            } catch (\Exception $e) { \Log::error("Dashboard Movies Error: " . $e->getMessage()); }
 
-            // 2. Series
+            // 2. Series (datos crudos TMDB, sin ratings locales)
             try {
-                $seriesRes = $this->getLatestSeries($request);
-                $data['series'] = $seriesRes->getData()->data ?? [];
-            } catch (\Exception $e) { \Log::error("Dashboard Series Error"); }
+                $token = config('services.tmdb.key');
+                $data = \Illuminate\Support\Facades\Cache::remember('latest_series_trending_day_v1', 1800, function () use ($token) {
+                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()->get('https://api.themoviedb.org/3/trending/tv/day', [
+                        'api_key' => $token, 'language' => 'es-ES'
+                    ]);
+                    return $response->failed() ? ['results' => []] : $response->json();
+                });
+                $results = $data['results'] ?? [];
+                foreach ($results as &$item) {
+                    $item['title'] = $item['name'] ?? 'Sin título';
+                    $item['year'] = isset($item['first_air_date']) ? substr($item['first_air_date'], 0, 4) : 'N/A';
+                }
+                $raw['series'] = $results;
+            } catch (\Exception $e) { \Log::error("Dashboard Series Error: " . $e->getMessage()); }
 
-            // 3. Juegos
+            // 3. Juegos (datos crudos IGDB, sin ratings locales)
             try {
-                $gamesRes = $this->getLatestGames($request);
-                $data['games'] = $gamesRes->getData()->data ?? [];
-            } catch (\Exception $e) { \Log::error("Dashboard Games Error"); }
+                $accessToken = $this->getIgdbToken();
+                if ($accessToken) {
+                    $igdbData = \Illuminate\Support\Facades\Cache::remember('latest_games_dashboard_v8', 1800, function () use ($accessToken) {
+                        $hace90Dias = now()->subDays(90)->timestamp;
+                        $manana = now()->addDay()->timestamp;
+                        $query = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                                  where first_release_date >= {$hace90Dias} & first_release_date <= {$manana} & cover != null & total_rating_count > 5;
+                                  sort total_rating_count desc; limit 12;";
+                        $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                            ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                            ->withBody($query, 'text/plain')->post('https://api.igdb.com/v4/games');
+                        return $response->failed() ? [] : $response->json();
+                    });
+                    $raw['games'] = $this->formatIgdbGames($igdbData ?: []);
+                }
+            } catch (\Exception $e) { \Log::error("Dashboard Games Error: " . $e->getMessage()); }
 
-            // 4. Hilos del foro (Con todos sus datos originales)
+            // 4. Hilos del foro
             try {
-                $data['threads'] = \App\Models\Hilo::with(['user', 'medio'])
+                $raw['threads'] = \App\Models\Hilo::with(['user', 'medio'])
                     ->withCount('respuestas')
                     ->orderBy('created_at', 'desc')
                     ->take(5)
                     ->get();
-            } catch (\Exception $e) { \Log::error("Dashboard Threads Error"); }
+            } catch (\Exception $e) { \Log::error("Dashboard Threads Error: " . $e->getMessage()); }
 
-            return [
-                'success' => true,
-                'data' => $data
-            ];
+            return $raw;
         });
+
+        // Ratings siempre frescos — fuera de la caché
+        $movies = $this->mergeWithLocalRatings($raw['movies'] ?? [], 'pelicula');
+        $series = $this->mergeWithLocalRatings($raw['series'] ?? [], 'serie');
+        $games  = $this->mergeWithLocalRatings($raw['games']  ?? [], 'videojuego');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'movies'  => $movies,
+                'series'  => $series,
+                'games'   => $games,
+                'threads' => $raw['threads'] ?? [],
+            ]
+        ]);
     }
 }
