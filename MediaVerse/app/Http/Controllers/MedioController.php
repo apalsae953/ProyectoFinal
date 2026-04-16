@@ -698,63 +698,67 @@ class MedioController extends Controller
                 return response()->json(['success' => true, 'data' => $resultsWithRatings, 'total_results' => $cachedData['total_results']], 200);
             }
 
-            // SIN FILTROS: popularity_primitives (lo más popular ahora mismo en IGDB)
-            $cacheKey = "popular_games_primitives_v2_{$page}";
-            $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset) {
-                $ahora = now()->timestamp;
+            // SIN FILTROS: intentamos popularity_primitives, si falla usamos fallback probado
+            $cacheKey = "popular_games_primitives_v3_{$page}";
+            $cachedData = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
-                // Paso 1: IDs de los juegos más populares ahora mismo (visitas en IGDB)
-                // Pedimos más de 20 por si algunos son juegos no lanzados aún y hay que descartarlos
+            if (!$cachedData) {
+                $ahora = now()->timestamp;
+                $headers = ['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken];
+
+                // Intento 1: popularity_primitives
                 $popularQuery = "fields game_id, value, popularity_type;
                     where popularity_type = 1;
                     sort value desc;
                     limit 40; offset {$offset};";
 
-                $popularResponse = Http::withoutVerifying()
-                    ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                $popularResponse = Http::withoutVerifying()->withHeaders($headers)
                     ->withBody($popularQuery, 'text/plain')
                     ->post('https://api.igdb.com/v4/popularity_primitives');
 
-                // Si popularity_primitives funciona, usamos ese ranking
-                if (!$popularResponse->failed() && !empty($popularResponse->json())) {
-                    $popularData = $popularResponse->json();
-                    $gameIds = implode(',', array_column($popularData, 'game_id'));
+                $popularData = (!$popularResponse->failed() && is_array($popularResponse->json())) ? $popularResponse->json() : [];
+                $gameIds = implode(',', array_filter(array_column($popularData, 'game_id')));
 
-                    // Paso 2: Detalles de esos juegos — solo los ya lanzados
+                if (!empty($gameIds)) {
                     $gamesQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
-                        where id = ({$gameIds}) & cover != null & first_release_date <= {$ahora} & category = 0;
+                        where id = ({$gameIds}) & cover != null & first_release_date <= {$ahora};
                         limit 20;";
 
-                    $gamesResponse = Http::withoutVerifying()
-                        ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                    $gamesResponse = Http::withoutVerifying()->withHeaders($headers)
                         ->withBody($gamesQuery, 'text/plain')
                         ->post('https://api.igdb.com/v4/games');
 
-                    if (!$gamesResponse->failed() && !empty($gamesResponse->json())) {
-                        $games = $gamesResponse->json();
+                    $games = (!$gamesResponse->failed() && is_array($gamesResponse->json()) && !empty($gamesResponse->json()) && isset($gamesResponse->json()[0]['name']))
+                        ? $gamesResponse->json() : [];
+
+                    if (!empty($games)) {
                         $popularityOrder = array_flip(array_column($popularData, 'game_id'));
                         usort($games, function ($a, $b) use ($popularityOrder) {
-                            $posA = $popularityOrder[$a['id']] ?? 999;
-                            $posB = $popularityOrder[$b['id']] ?? 999;
-                            return $posA <=> $posB;
+                            return ($popularityOrder[$a['id']] ?? 999) <=> ($popularityOrder[$b['id']] ?? 999);
                         });
-                        return ['results' => $games, 'total_results' => 500];
+                        $cachedData = ['results' => $games, 'total_results' => 500];
                     }
                 }
 
-                // FALLBACK: juegos más jugados del último año ordenados por total_rating_count
-                $haceUnAnio = now()->subYear()->timestamp;
-                $fallbackQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
-                    where cover != null & category = 0 & first_release_date >= {$haceUnAnio} & first_release_date <= {$ahora};
-                    sort total_rating_count desc; limit 20; offset {$offset};";
+                // Intento 2 (fallback): último año ordenado por popularidad acumulada
+                if (!$cachedData) {
+                    $haceUnAnio = now()->subYear()->timestamp;
+                    $fallbackQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                        where cover != null & first_release_date >= {$haceUnAnio} & first_release_date <= {$ahora};
+                        sort total_rating_count desc; limit 20; offset {$offset};";
 
-                $fallbackResponse = Http::withoutVerifying()
-                    ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
-                    ->withBody($fallbackQuery, 'text/plain')
-                    ->post('https://api.igdb.com/v4/games');
+                    $fallbackResponse = Http::withoutVerifying()->withHeaders($headers)
+                        ->withBody($fallbackQuery, 'text/plain')
+                        ->post('https://api.igdb.com/v4/games');
 
-                return $fallbackResponse->failed() ? null : ['results' => $fallbackResponse->json(), 'total_results' => 500];
-            });
+                    if (!$fallbackResponse->failed() && is_array($fallbackResponse->json()) && !empty($fallbackResponse->json()))
+                        $cachedData = ['results' => $fallbackResponse->json(), 'total_results' => 500];
+                }
+
+                // Solo cacheamos si tenemos datos reales
+                if ($cachedData)
+                    \Illuminate\Support\Facades\Cache::put($cacheKey, $cachedData, 1800);
+            }
 
             if (!$cachedData)
                 return response()->json(['success' => false, 'message' => 'Error API Juegos'], 500);
