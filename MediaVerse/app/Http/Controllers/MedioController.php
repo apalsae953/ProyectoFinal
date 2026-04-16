@@ -628,10 +628,10 @@ class MedioController extends Controller
             $genre = $request->query('genre');
             $year = $request->query('year');
             $platform = $request->query('platform');
-            $sortBy = $request->query('sort', 'rating_count'); // Por defecto ordenamos por conteo de votos de la API
+            $sortBy = $request->query('sort', 'rating_count');
             $offset = ($page - 1) * 20;
 
-            // Mejores valorados localmente
+            // MEJOR VALORADOS EN MEDIAVERSE
             if ($sortBy === 'rating') {
                 $query = \App\Models\Medio::where('tipo', 'videojuego')
                     ->withAvg('valoraciones', 'puntuacion')
@@ -661,38 +661,92 @@ class MedioController extends Controller
                 }
             }
 
-            // FALLBACK A IGDB (ÓRDENES POR DEFECTO / POPULARIDAD 3 MESES)
-            $cacheKey = "popular_games_v_last90d_v7_{$page}_{$genre}_{$year}_{$platform}_{$sortBy}";
-            $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset, $genre, $year, $platform, $sortBy) {
-                $where = ["cover != null"];
-                if ($genre)
-                    $where[] = "genres = ({$genre})";
-                if ($platform)
-                    $where[] = "platforms = ({$platform})";
-                if ($year) {
-                    $start = strtotime("{$year}-01-01");
-                    $end = strtotime("{$year}-12-31");
-                    $where[] = "first_release_date >= {$start} & first_release_date <= {$end}";
-                } else {
-                    // Mas populares de los últimos 90 días (ajustado para ver solo lo más reciente)
-                    $hace90Dias = now()->subDays(90)->timestamp;
-                    $dondeEstamos = now()->timestamp;
-                    $where[] = "first_release_date >= {$hace90Dias} & first_release_date <= {$dondeEstamos}";
-                }
+            // CON FILTROS: búsqueda clásica sin restricción de fecha
+            if ($genre || $year || $platform) {
+                $cacheKey = "popular_games_filtered_v1_{$page}_{$genre}_{$year}_{$platform}";
+                $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset, $genre, $year, $platform) {
+                    $where = ["cover != null", "category = 0"];
+                    if ($genre)
+                        $where[] = "genres = ({$genre})";
+                    if ($platform)
+                        $where[] = "platforms = ({$platform})";
+                    if ($year) {
+                        $start = strtotime("{$year}-01-01");
+                        $end = strtotime("{$year}-12-31");
+                        $where[] = "first_release_date >= {$start} & first_release_date <= {$end}";
+                    }
 
-                // Popularidad por total_rating_count
-                $orderClause = ($sortBy === 'rating') ? "rating desc" : "total_rating_count desc";
-                $whereStr = implode(' & ', $where);
-                $queryStr = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name; 
-                          where {$whereStr}; sort {$orderClause}; limit 20; offset {$offset};";
+                    $whereStr = implode(' & ', $where);
+                    $queryStr = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                        where {$whereStr}; sort total_rating_count desc; limit 20; offset {$offset};";
 
-                $response = Http::withoutVerifying()->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
-                    ->withBody($queryStr, 'text/plain')->post('https://api.igdb.com/v4/games');
-                return $response->failed() ? null : ['results' => $response->json(), 'total_results' => 500];
+                    $response = Http::withoutVerifying()
+                        ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                        ->withBody($queryStr, 'text/plain')
+                        ->post('https://api.igdb.com/v4/games');
+
+                    return $response->failed() ? null : ['results' => $response->json(), 'total_results' => 500];
+                });
+
+                if (!$cachedData)
+                    return response()->json(['success' => false, 'message' => 'Error API Juegos'], 500);
+
+                $formatted = $this->formatIgdbGames($cachedData['results']);
+                $uniqueGames = collect($formatted)->unique('id')->values()->all();
+                $resultsWithRatings = $this->mergeWithLocalRatings($uniqueGames, 'videojuego');
+
+                return response()->json(['success' => true, 'data' => $resultsWithRatings, 'total_results' => $cachedData['total_results']], 200);
+            }
+
+            // SIN FILTROS: popularity_primitives (lo más popular ahora mismo en IGDB)
+            $cacheKey = "popular_games_primitives_v2_{$page}";
+            $cachedData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($accessToken, $offset) {
+                // Paso 1: IDs de los juegos más populares ahora mismo (visitas en IGDB)
+                // Pedimos más de 20 por si algunos son juegos no lanzados aún y hay que descartarlos
+                $popularQuery = "fields game_id, value, popularity_type;
+                    where popularity_type = 1;
+                    sort value desc;
+                    limit 40; offset {$offset};";
+
+                $popularResponse = Http::withoutVerifying()
+                    ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                    ->withBody($popularQuery, 'text/plain')
+                    ->post('https://api.igdb.com/v4/popularity_primitives');
+
+                if ($popularResponse->failed() || empty($popularResponse->json()))
+                    return null;
+
+                $popularData = $popularResponse->json();
+                $gameIds = implode(',', array_column($popularData, 'game_id'));
+                $ahora = now()->timestamp;
+
+                // Paso 2: Detalles de esos juegos — solo los ya lanzados (first_release_date <= ahora)
+                $gamesQuery = "fields id, name, cover.image_id, aggregated_rating, rating, first_release_date, total_rating_count, category, platforms.name;
+                    where id = ({$gameIds}) & cover != null & first_release_date <= {$ahora} & category = 0;
+                    limit 20;";
+
+                $gamesResponse = Http::withoutVerifying()
+                    ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
+                    ->withBody($gamesQuery, 'text/plain')
+                    ->post('https://api.igdb.com/v4/games');
+
+                if ($gamesResponse->failed()) return null;
+
+                // Reordenamos según el ranking de popularidad original
+                $games = $gamesResponse->json();
+                $popularityOrder = array_flip(array_column($popularData, 'game_id'));
+                usort($games, function ($a, $b) use ($popularityOrder) {
+                    $posA = $popularityOrder[$a['id']] ?? 999;
+                    $posB = $popularityOrder[$b['id']] ?? 999;
+                    return $posA <=> $posB;
+                });
+
+                return ['results' => $games, 'total_results' => 500];
             });
 
             if (!$cachedData)
                 return response()->json(['success' => false, 'message' => 'Error API Juegos'], 500);
+
             $formatted = $this->formatIgdbGames($cachedData['results']);
             $uniqueGames = collect($formatted)->unique('id')->values()->all();
             $resultsWithRatings = $this->mergeWithLocalRatings($uniqueGames, 'videojuego');
