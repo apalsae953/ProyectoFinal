@@ -335,36 +335,36 @@ function Detalle() {
           </div>
 
           {/* FILA 2: CONTENIDO PRINCIPAL (PÓSTER + TÍTULO E INFO) */}
-          <div style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap', marginTop: '10px' }}>
+          <div className="detalle-main-row" style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap', marginTop: '10px' }}>
             
             {/* Póster */}
             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-              <img src={poster} alt={datos.title || datos.name} style={{ width: '300px', borderRadius: '15px', boxShadow: '0 20px 60px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)' }} />
+              <img className="detalle-poster" src={poster} alt={datos.title || datos.name} style={{ width: '300px', borderRadius: '15px', boxShadow: '0 20px 60px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)' }} />
             </motion.div>
 
             {/* Información y Título */}
-            <div style={{ flex: '1 1 500px' }}>
-              <motion.h1 initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.3 }} style={{ fontSize: '4.5rem', margin: 0, fontWeight: '900', lineHeight: '1', letterSpacing: '-3px', textShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
+            <div className="detalle-info-col" style={{ flex: '1 1 500px' }}>
+              <motion.h1 className="detalle-title" initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.3 }} style={{ fontSize: '4.5rem', margin: 0, fontWeight: '900', lineHeight: '1', letterSpacing: '-3px', textShadow: '0 10px 40px rgba(0,0,0,0.8)' }}>
                 {datos.title || datos.name}
               </motion.h1>
 
               {/* Fila de info (Año, Puntuaciones, Duración) */}
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '30px', marginTop: '35px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <motion.div className="detalle-info-row" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '30px', marginTop: '35px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ backgroundColor: '#e50914', color: 'white', padding: '6px 16px', borderRadius: '6px', fontWeight: '900', fontSize: '20px' }}>{datos.year}</div>
                 
                 {/* Puntuaciones */}
-                <div style={{ display: 'flex', gap: '20px', padding: '10px 25px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
+                <div className="detalle-scores-bar" style={{ display: 'flex', gap: '20px', padding: '10px 25px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ color: '#66cc33', fontWeight: '900', fontSize: '24px' }}>{datos.metacritic ? Number(datos.metacritic).toFixed(1) : (tipo !== 'game' && datos.vote_average ? Number(datos.vote_average).toFixed(1) : 'N/A')}</div>
+                    <div className="detalle-score-num" style={{ color: '#66cc33', fontWeight: '900', fontSize: '24px' }}>{datos.metacritic ? Number(datos.metacritic).toFixed(1) : (tipo !== 'game' && datos.vote_average ? Number(datos.vote_average).toFixed(1) : 'N/A')}</div>
                     <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>Crítica</div>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ color: '#4caf50', fontWeight: '900', fontSize: '24px' }}>{datos.puntuacion_usuarios ? datos.puntuacion_usuarios : '-'}</div>
+                    <div className="detalle-score-num" style={{ color: '#4caf50', fontWeight: '900', fontSize: '24px' }}>{datos.puntuacion_usuarios ? datos.puntuacion_usuarios : '-'}</div>
                     <div style={{ fontSize: '10px', color: '#888', textTransform: 'uppercase' }}>MediaVerse</div>
                   </div>
                   {myRating !== null && (
                     <div style={{ textAlign: 'center', borderLeft: '1px solid #333', paddingLeft: '20px' }}>
-                      <div style={{ color: '#e50914', fontWeight: '900', fontSize: '24px' }}>{Number(myRating).toFixed(1)}</div>
+                      <div className="detalle-score-num" style={{ color: '#e50914', fontWeight: '900', fontSize: '24px' }}>{Number(myRating).toFixed(1)}</div>
                       <div style={{ fontSize: '10px', color: '#e50914', textTransform: 'uppercase', fontWeight: 'bold' }}>Tu Nota</div>
                     </div>
                   )}
@@ -376,36 +376,40 @@ function Detalle() {
               </motion.div>
 
               {/* Botones de acción dentro del Hero */}
-              <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} style={{ display: 'flex', gap: '15px', marginTop: '45px', flexWrap: 'wrap' }}>
-                <motion.button 
+              <motion.div className="detalle-action-btns" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 }} style={{ display: 'flex', gap: '15px', marginTop: '45px', flexWrap: 'wrap' }}>
+                <motion.button
+                  className="detalle-action-btn"
                   onClick={toggleVerMasTarde}
-                  whileHover={{ scale: 1.05, boxShadow: esVerMasTarde ? '0 8px 30px rgba(229, 9, 20, 0.4)' : '0 8px 30px rgba(229, 9, 20, 0.4)' }} 
+                  whileHover={{ scale: 1.05, boxShadow: esVerMasTarde ? '0 8px 30px rgba(229, 9, 20, 0.4)' : '0 8px 30px rgba(229, 9, 20, 0.4)' }}
                   whileTap={{ scale: 0.95 }}
                   style={{ padding: '15px 35px', borderRadius: '12px', border: esVerMasTarde ? 'none' : '1px solid rgba(255,255,255,0.4)', backgroundColor: esVerMasTarde ? '#e50914' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)', transition: 'background-color 0.3s' }}
                 >
                   <i className={'fa-solid ' + (esVerMasTarde ? 'fa-circle-xmark' : 'fa-clock')}></i> {esVerMasTarde ? (tipo === 'game' ? 'QUITAR DE JUGAR MÁS TARDE' : 'QUITAR DE VER MÁS TARDE') : (tipo === 'game' ? 'JUGAR MÁS TARDE' : 'VER MÁS TARDE')}
                 </motion.button>
 
-                <motion.button 
+                <motion.button
+                  className="detalle-action-btn"
                   onClick={toggleVisto}
-                  whileHover={{ scale: 1.05, boxShadow: esVisto ? '0 8px 30px rgba(100, 100, 100, 0.4)' : '0 8px 30px rgba(76, 175, 80, 0.4)' }} 
+                  whileHover={{ scale: 1.05, boxShadow: esVisto ? '0 8px 30px rgba(100, 100, 100, 0.4)' : '0 8px 30px rgba(76, 175, 80, 0.4)' }}
                   whileTap={{ scale: 0.95 }}
                   style={{ padding: '15px 35px', borderRadius: '12px', border: esVisto ? '1px solid rgba(255,255,255,0.4)' : 'none', backgroundColor: esVisto ? '#4caf50' : 'rgba(255,255,255,0.1)', color: 'white', fontWeight: '900', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', backdropFilter: 'blur(10px)', transition: 'background-color 0.3s' }}
                 >
                   <i className={'fa-solid ' + (esVisto ? 'fa-check' : (tipo === 'game' ? 'fa-gamepad' : 'fa-eye'))}></i> {esVisto ? (tipo === 'game' ? 'JUGADO' : 'VISTO') : (tipo === 'game' ? 'MARCAR COMO JUGADO' : 'MARCAR COMO VISTO')}
                 </motion.button>
 
-                <motion.button 
+                <motion.button
+                  className="detalle-action-btn"
                   onClick={abrirModalReviews}
-                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} 
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
                   whileTap={{ scale: 0.95 }}
                   style={{ padding: '15px 30px', borderRadius: '12px', border: '2px solid rgba(255,255,255,0.4)', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
                 >
                   <i className="fa-solid fa-star"></i> VER RESEÑAS
                 </motion.button>
-                <motion.button 
+                <motion.button
+                  className="detalle-action-btn"
                   onClick={abrirModalRanking}
-                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} 
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
                   whileTap={{ scale: 0.95 }}
                   title="Añadir a Ranking"
                   style={{ padding: '15px 25px', borderRadius: '12px', border: '2px solid rgba(255,255,255,0.4)', backgroundColor: 'transparent', color: 'white', fontWeight: 'bold', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}

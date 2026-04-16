@@ -95,7 +95,7 @@ function Dashboard() {
     <div style={{ backgroundColor: '#121212', minHeight: '100vh', color: 'white', overflowX: 'hidden' }}>
 
       {/* 1. HERO CAROUSEL */}
-      <div style={{ position: 'relative', height: '550px', width: '100%', marginBottom: '60px', overflow: 'hidden' }}>
+      <div className="hero-carousel-section" style={{ position: 'relative', height: '550px', width: '100%', marginBottom: '60px', overflow: 'hidden' }}>
         <AnimatePresence mode='wait'>
           {trending.length > 0 && (
             <motion.div
@@ -145,7 +145,7 @@ function Dashboard() {
         </AnimatePresence>
 
         {/* Indicadores del Carrusel */}
-        <div style={{ position: 'absolute', bottom: '40px', right: '60px', display: 'flex', gap: '10px', zIndex: 10 }}>
+        <div className="carousel-indicators" style={{ position: 'absolute', bottom: '40px', right: '60px', display: 'flex', gap: '10px', zIndex: 10 }}>
           {trending.map((_, i) => (
             <div
               key={i}
@@ -161,6 +161,7 @@ function Dashboard() {
 
         {/* Carousel Arrows */}
         <button
+          className="carousel-arrow-btn"
           onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev - 1 + trending.length) % trending.length); }}
           style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', backdropFilter: 'blur(5px)', transition: 'all 0.3s' }}
           onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(229, 9, 20, 0.8)'}
@@ -169,6 +170,7 @@ function Dashboard() {
           <i className="fa-solid fa-chevron-left"></i>
         </button>
         <button
+          className="carousel-arrow-btn"
           onClick={(e) => { e.stopPropagation(); setActiveSlide((prev) => (prev + 1) % trending.length); }}
           style={{ position: 'absolute', right: '20px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '50px', height: '50px', cursor: 'pointer', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', backdropFilter: 'blur(5px)', transition: 'all 0.3s' }}
           onMouseEnter={(e) => e.target.style.backgroundColor = 'rgba(229, 9, 20, 0.8)'}
@@ -182,18 +184,18 @@ function Dashboard() {
         <div className="mobile-p-small" style={{ padding: '0 40px' }}>
 
         {/* 2. STATS & GREETING BAR */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
+        <div className="dashboard-stats-bar" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           flexWrap: 'wrap',
           gap: '20px',
-          marginBottom: '60px', 
-          backgroundColor: '#1a1a1a', 
-          padding: '25px 40px', 
-          borderRadius: '20px', 
-          border: '1px solid #333', 
-          backdropFilter: 'blur(20px)' 
+          marginBottom: '60px',
+          backgroundColor: '#1a1a1a',
+          padding: '25px 40px',
+          borderRadius: '20px',
+          border: '1px solid #333',
+          backdropFilter: 'blur(20px)'
         }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700' }}>
@@ -202,7 +204,7 @@ function Dashboard() {
             <p style={{ color: '#888', margin: '5px 0 0 0' }}>Explora lo último en cine, series y videojuegos.</p>
           </div>
           {user ? (
-            <div style={{ display: 'flex', gap: '40px' }}>
+            <div className="stats-items-row" style={{ display: 'flex', gap: '40px' }}>
               <Link to="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <StatMini icon="fa-check" value={stats.visto} label="Vistos" color="#4caf50" />
               </Link>
@@ -251,7 +253,7 @@ function Dashboard() {
             <h3 style={{ fontSize: '2rem', marginBottom: '35px', display: 'flex', alignItems: 'center', gap: '15px' }}>
               <i className="fa-solid fa-gamepad" style={{ color: 'green' }}></i> Imprescindibles en Videojuegos
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
+            <div className="dashboard-games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '25px' }}>
               {popularGames.slice(0, 6).map(game => (
                 <motion.div
                   key={game.id}
@@ -259,7 +261,7 @@ function Dashboard() {
                   onClick={() => navigate('/detalle/game/' + game.id)}
                   style={{ backgroundColor: '#1a1a1a', borderRadius: '20px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #333', transition: 'all 0.3s ease' }}
                 >
-                  <div style={{ height: '220px', backgroundImage: 'url(' + game.background_image + ')', backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                  <div className="game-card-img" style={{ height: '220px', backgroundImage: 'url(' + game.background_image + ')', backgroundSize: 'cover', backgroundPosition: 'center' }} />
                   <div style={{ padding: '15px' }}>
                     <h4 style={{ margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '10px' }}>{game.name}</h4>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '15px', borderTop: '1px solid #333', paddingTop: '10px', fontWeight: 'bold' }}>
@@ -384,6 +386,7 @@ function SectionRow({ title, data, type }) {
         {data.map(item => (
           <motion.div
             key={item.id}
+            className="section-row-card"
             whileHover={{ scale: moved ? 1 : 1.05 }}
             onClick={() => {
               if (!moved) navigate('/detalle/' + type + '/' + item.id);

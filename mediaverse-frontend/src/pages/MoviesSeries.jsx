@@ -156,7 +156,7 @@ function MoviesSeries() {
             </h1>
 
             {/* FILTROS (ARRIBA) */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
+            <div className="filtros-wrapper" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
                 <select
                     value={filtros.genre}
                     onChange={(e) => {
@@ -248,7 +248,7 @@ function MoviesSeries() {
             </div>
 
             {/* BARRA DE BÚSQUEDA (ABAJO) */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', padding: '0 20px' }}>
+            <div className="search-bar-wrapper" style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', padding: '0 20px' }}>
                 <div style={{ position: 'relative', width: '100%', maxWidth: '450px' }}>
                     <div style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: '#e50914' }}>
                         <i className="fa-solid fa-magnifying-glass"></i>
@@ -312,6 +312,7 @@ function MoviesSeries() {
                             >
                                 {/* BOTONES FLOTANTES INTERACCIÓN */}
                                 <button
+                                    className="card-btn-float"
                                     onClick={(e) => toggleInteraccion(e, peli, 'visto')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '15px',
@@ -326,6 +327,7 @@ function MoviesSeries() {
                                     {vistos.includes(peli.id) ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-eye"></i>}
                                 </button>
                                 <button
+                                    className="card-btn-float-2"
                                     onClick={(e) => toggleInteraccion(e, peli, 'verMasTarde')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '55px',

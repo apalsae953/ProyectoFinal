@@ -142,7 +142,7 @@ function Games() {
             </h1>
 
             {/* FILTROS (ARRIBA) */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
+            <div className="filtros-wrapper" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginBottom: '10px', padding: '0 20px' }}>
                 <select
                     value={filtros.genre}
                     onChange={(e) => {
@@ -219,7 +219,7 @@ function Games() {
             </div>
 
             {/* BARRA DE BÚSQUEDA (ABAJO) */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', padding: '0 20px' }}>
+            <div className="search-bar-wrapper" style={{ display: 'flex', justifyContent: 'center', marginBottom: '30px', padding: '0 20px' }}>
                 <div style={{ position: 'relative', width: '100%', maxWidth: '450px' }}>
                     <div style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: '#e50914' }}>
                         <i className="fa-solid fa-magnifying-glass"></i>
@@ -293,6 +293,7 @@ function Games() {
                             >
                                 {/* BOTONES FLOTANTES INTERACCIÓN */}
                                 <button
+                                    className="card-btn-float"
                                     onClick={(e) => toggleInteraccion(e, juego, 'jugado')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '15px',
@@ -307,6 +308,7 @@ function Games() {
                                     {jugados.includes(juego.id) ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-gamepad"></i>}
                                 </button>
                                 <button
+                                    className="card-btn-float-2"
                                     onClick={(e) => toggleInteraccion(e, juego, 'verMasTarde')}
                                     style={{
                                         position: 'absolute', top: '15px', right: '55px',
@@ -322,7 +324,7 @@ function Games() {
                                 </button>
                                 <div>
                                     <div style={{ position: 'relative' }}>
-                                        <img src={juego.background_image ? juego.background_image : 'https://via.placeholder.com/500x750?text=No+Image'} alt={juego.name} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px' }} />
+                                        <img className="game-grid-img" src={juego.background_image ? juego.background_image : 'https://via.placeholder.com/500x750?text=No+Image'} alt={juego.name} style={{ width: '100%', height: '280px', objectFit: 'cover', borderRadius: '4px' }} />
                                     </div>
                                     <h3 style={{ fontSize: '15px', margin: '12px 0 5px 0', lineHeight: '1.2', height: '40px', overflow: 'hidden' }}>
                                         {juego.name} <span style={{ color: '#777', fontSize: '12px' }}>({juego.year})</span>

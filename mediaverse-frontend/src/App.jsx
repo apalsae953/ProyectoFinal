@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import MoviesSeries from './pages/MoviesSeries';
 import SearchActors from './pages/SearchActors';
@@ -22,6 +22,35 @@ import Ajustes from './pages/Ajustes';
 import { alerts } from './utils/swal';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from './services/api';
+
+function MobileBottomNav({ isLogged }) {
+  const location = useLocation();
+  const path = location.pathname;
+  return (
+    <nav className="mobile-bottom-nav">
+      <Link to="/dashboard" className={path === '/dashboard' ? 'mobile-nav-active' : ''}>
+        <i className="fa-solid fa-house"></i>
+        Inicio
+      </Link>
+      <Link to="/cine-y-series" className={path === '/cine-y-series' ? 'mobile-nav-active' : ''}>
+        <i className="fa-solid fa-film"></i>
+        Cine
+      </Link>
+      <Link to="/juegos" className={path === '/juegos' ? 'mobile-nav-active' : ''}>
+        <i className="fa-solid fa-gamepad"></i>
+        Juegos
+      </Link>
+      <Link to="/foro" className={path === '/foro' ? 'mobile-nav-active' : ''}>
+        <i className="fa-solid fa-comments"></i>
+        Foro
+      </Link>
+      <Link to={isLogged ? '/perfil' : '/auth'} className={['/perfil', '/auth'].includes(path) ? 'mobile-nav-active' : ''}>
+        <i className={isLogged ? 'fa-solid fa-user' : 'fa-solid fa-circle-user'}></i>
+        {isLogged ? 'Perfil' : 'Entrar'}
+      </Link>
+    </nav>
+  );
+}
 
 function App() {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -135,7 +164,7 @@ function App() {
       <div style={{ backgroundColor: '#121212', minHeight: '100vh', fontFamily: 'sans-serif', position: 'relative' }}>
 
         {/* BARRA DE NAVEGACIÓN SUPERIOR */}
-        <nav style={{ padding: '20px', backgroundColor: '#000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <nav className="main-nav" style={{ padding: '20px', backgroundColor: '#000', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {/* Lado Izquierdo: Logo y Secciones Principales */}
           <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
             <Link to="/dashboard" style={{ textDecoration: 'none', transition: 'transform 0.3s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.10)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
@@ -245,6 +274,7 @@ function App() {
               {/* PANEL DEL MENÚ LATERAL */}
               {menuAbierto && (
                 <div
+                  className="hamburger-panel"
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
                   style={{
@@ -254,6 +284,14 @@ function App() {
                     borderBottomLeftRadius: '15px', borderLeft: '1px solid #333', borderBottom: '1px solid #333',
                     paddingTop: '25px', maxHeight: '90vh', overflowY: 'auto'
                   }}>
+                  {/* Botón cerrar (visible solo en móvil) */}
+                  <button
+                    className="hamburger-panel-close"
+                    onClick={() => { setMenuAbierto(false); setMenuBloqueado(false); }}
+                    aria-label="Cerrar menú"
+                  >
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
                   
                   {/* SECCIONES PARA MÓVIL (Visibles solo en móvil) */}
                   <div className="show-on-mobile">
@@ -292,7 +330,7 @@ function App() {
         </nav>
 
         {/* CONTENIDO DE LAS PÁGINAS */}
-        <div style={{ padding: '20px' }} onClick={() => setMenuAbierto(false)}>
+        <div className="page-content-padded" style={{ padding: '20px' }} onClick={() => setMenuAbierto(false)}>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/cine-y-series" element={<MoviesSeries />} />
@@ -316,6 +354,9 @@ function App() {
             <Route path="/ajustes" element={<Ajustes />} />
           </Routes>
         </div>
+
+        {/* BARRA DE NAVEGACIÓN INFERIOR — Solo visible en móvil */}
+        <MobileBottomNav isLogged={isLogged} />
 
       </div>
     </Router>
