@@ -738,7 +738,7 @@ class MedioController extends Controller
                 }
             }
 
-            $cacheKey = "popular_anime_vMorning_{$page}_{$year}_{$sortBy}";
+            $cacheKey = "popular_anime_v2_{$page}_{$year}_{$sortBy}";
             $data = \Illuminate\Support\Facades\Cache::remember($cacheKey, 600, function () use ($token, $page, $year, $sortBy) {
                 // Filtro común: Animación (16) + Idioma Japonés (ja) + Popularidad básica
                 $commonParamsList = [
@@ -765,25 +765,28 @@ class MedioController extends Controller
 
                 $results = [];
                 if ($moviePool->ok()) {
-                    foreach ($moviePool->json()['results'] as $m) {
-                        $m['_type_mixed'] = 'movie'; // Flag para el frontend
+                    foreach ($moviePool->json()['results'] ?? [] as $m) {
+                        $m['_type_mixed'] = 'movie';
                         $results[] = $m;
                     }
                 }
                 if ($tvPool->ok()) {
-                    foreach ($tvPool->json()['results'] as $t) {
+                    foreach ($tvPool->json()['results'] ?? [] as $t) {
                         $t['_type_mixed'] = 'tv';
                         $t['title'] = $t['name'] ?? 'Sin título';
                         $results[] = $t;
                     }
                 }
 
+                // Si ambas llamadas fallaron, no cachear para reintentar en la siguiente petición
+                if (empty($results)) return null;
+
                 // Ordenamos la mezcla por popularidad real
                 usort($results, fn($a, $b) => ($b['popularity'] ?? 0) <=> ($a['popularity'] ?? 0));
 
                 return [
-                    'results' => array_slice($results, 0, 20), // Devolvemos 20 elementos mezclados
-                    'total_pages' => 500 // TMDB limita discover a 500
+                    'results' => array_slice($results, 0, 20),
+                    'total_pages' => 500
                 ];
             });
 
