@@ -33,7 +33,7 @@ function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!isLogin && formData.password !== formData.password_confirmation) {
       alerts.error('Las contraseñas no coinciden.');
       return;
@@ -66,19 +66,19 @@ function Auth() {
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', color: 'white' }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ width: '100%', maxWidth: '400px', backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
         <div style={{ position: 'relative' }}>
-          <button 
-            onClick={() => navigate('/dashboard')} 
+          <button
+            onClick={() => navigate('/dashboard')}
             className="btn-volver"
-            style={{ 
-              position: 'absolute', 
-              top: '-20px', 
-              left: '-20px', 
-              background: 'rgba(255,255,255,0.05)', 
-              border: '1px solid #333', 
+            style={{
+              position: 'absolute',
+              top: '-20px',
+              left: '-20px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid #333',
               borderRadius: '20px',
               padding: '6px 15px',
-              color: '#888', 
-              cursor: 'pointer', 
+              color: '#888',
+              cursor: 'pointer',
               fontSize: '12px',
               display: 'flex',
               alignItems: 'center',
@@ -154,9 +154,6 @@ function Auth() {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button onClick={() => handleSocialLogin('google')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#fff', color: '#333', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
             <i className="fa-brands fa-google" style={{ color: '#db4437' }}></i> Google
-          </button>
-          <button onClick={() => handleSocialLogin('github')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', backgroundColor: '#333', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <i className="fa-brands fa-github"></i> GitHub
           </button>
         </div>
 
