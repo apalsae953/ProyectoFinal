@@ -85,7 +85,7 @@ function Trivia() {
         fetchUserBestScores();
     }, []);
 
-    // Timer de la pregunta
+    // Tiempo de la pregunta
     useEffect(() => {
         if (fase !== 'jugando' || respondida) return;
 
