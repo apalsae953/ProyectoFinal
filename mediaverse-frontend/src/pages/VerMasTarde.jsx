@@ -6,26 +6,26 @@ import { motion } from 'framer-motion';
 function VerMasTarde() {
     const [verMasTarde, setVerMasTarde] = useState([]); // Lista de medios guardados para ver más tarde
     const [cargando, setCargando] = useState(true); // Estado de carga de la página
-    
+
     // Búsqueda y filtrado
     const [search, setSearch] = useState('');
     const [filterTipo, setFilterTipo] = useState('todos');
-    
-    // Configuración de paginación (12 elementos por página)
+
+    // Paginación (pongo 12 por página)
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 12;
 
     const navigate = useNavigate();
 
     useEffect(() => {
-        if(!localStorage.getItem('auth_token')) {
+        if (!localStorage.getItem('auth_token')) {
             navigate('/auth'); // Redirigir si el usuario no está autenticado
             return;
         }
 
         // Obtener interacciones marcadas como "ver más tarde"
         api.get('/interactions/me').then(res => {
-            if(res.data.data.ver_mas_tarde) {
+            if (res.data.data.ver_mas_tarde) {
                 setVerMasTarde(res.data.data.ver_mas_tarde);
             }
             setCargando(false);
@@ -35,7 +35,7 @@ function VerMasTarde() {
         });
     }, [navigate]);
 
-    // Filtrar los elementos según título y tipo de medio
+    // Filtro de lo que haya buscado
     const filteredItems = verMasTarde.filter(item => {
         const matchesSearch = item.medio.titulo.toLowerCase().includes(search.toLowerCase());
         const matchesTipo = filterTipo === 'todos' || item.medio.tipo === filterTipo;
@@ -44,7 +44,7 @@ function VerMasTarde() {
 
     // Calcular Paginación
     const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
-    
+
     // Si filtramos y nos quedamos en una página que ya no existe, volvemos a la 1
     useEffect(() => {
         if (currentPage > totalPages && totalPages > 0) {
@@ -63,12 +63,12 @@ function VerMasTarde() {
         <div style={{ padding: '40px 20px', color: 'white', maxWidth: '1200px', margin: '0 auto', minHeight: '80vh' }}>
             <div style={{ textAlign: 'center', marginBottom: '40px' }}>
                 <h2 style={{ fontSize: '3rem', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-1px' }}>
-                    <i className="fa-solid fa-clock" style={{color: '#e50914', marginRight: '15px'}}></i> 
+                    <i className="fa-solid fa-clock" style={{ color: '#e50914', marginRight: '15px' }}></i>
                     Ver Más Tarde
                 </h2>
                 <p style={{ color: '#aaa', fontSize: '1.2rem', margin: 0 }}>Todo el contenido que has guardado para disfrutar en el futuro. Total:  <span style={{ color: '#e50914', fontWeight: 'bold' }}>{totalVerMasTarde}</span> elementos.</p>
             </div>
-            
+
             {/* BARRA DE BÚSQUEDA Y FILTROS */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center', marginBottom: '40px' }}>
                 {/* Buscador */}
@@ -76,9 +76,9 @@ function VerMasTarde() {
                     <div style={{ position: 'absolute', left: '20px', top: '50%', transform: 'translateY(-50%)', color: '#e50914' }}>
                         <i className="fa-solid fa-magnifying-glass"></i>
                     </div>
-                    <input 
-                        type="text" 
-                        placeholder="Buscar en tu lista..." 
+                    <input
+                        type="text"
+                        placeholder="Buscar en tu lista..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         style={{ width: '100%', padding: '15px 20px 15px 50px', borderRadius: '30px', border: '2px solid #333', backgroundColor: '#111', color: 'white', fontSize: '16px', outline: 'none', transition: 'border-color 0.3s' }}
@@ -88,8 +88,8 @@ function VerMasTarde() {
                 </div>
 
                 {/* Filtro por tipo */}
-                <select 
-                    value={filterTipo} 
+                <select
+                    value={filterTipo}
                     onChange={(e) => setFilterTipo(e.target.value)}
                     style={{ padding: '15px 25px', borderRadius: '30px', border: '2px solid #333', backgroundColor: '#111', color: 'white', fontSize: '16px', outline: 'none', cursor: 'pointer', appearance: 'none' }}
                 >
@@ -118,13 +118,13 @@ function VerMasTarde() {
                                 </p>
                             </div>
                         ) : null}
-                        
+
                         {paginatedItems.map((item, index) => (
-                            <motion.div 
+                            <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.05 }}
-                                key={item.id} 
+                                key={item.id}
                                 style={{ backgroundColor: '#1a1a1a', borderRadius: '15px', overflow: 'hidden', cursor: 'pointer', border: '1px solid #222', display: 'flex', flexDirection: 'column' }}
                                 whileHover={{ y: -10, boxShadow: '0 20px 40px rgba(0,0,0,0.8)', borderColor: '#e50914' }}
                                 onClick={() => {
@@ -133,14 +133,14 @@ function VerMasTarde() {
                                 }}
                             >
                                 <div style={{ position: 'relative' }}>
-                                    <img 
-                                        src={item.medio.poster_path ? (item.medio.poster_path.startsWith('http') ? item.medio.poster_path : 'https://image.tmdb.org/t/p/w500' + item.medio.poster_path) : 'https://via.placeholder.com/500x750?text=No+Image'} 
-                                        alt={item.medio.titulo} 
-                                        style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover' }} 
+                                    <img
+                                        src={item.medio.poster_path ? (item.medio.poster_path.startsWith('http') ? item.medio.poster_path : 'https://image.tmdb.org/t/p/w500' + item.medio.poster_path) : 'https://via.placeholder.com/500x750?text=No+Image'}
+                                        alt={item.medio.titulo}
+                                        style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover' }}
                                     />
                                     {/* Etiqueta para saber qué es cada cosa */}
                                     <div style={{ position: 'absolute', top: '10px', left: '10px', backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', padding: '5px 12px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.2)', textTransform: 'uppercase' }}>
-                                        {item.medio.tipo === 'videojuego' ? <><i className="fa-solid fa-gamepad" style={{color: '#4caf50', marginRight: '5px'}}></i> Videojuego</> : item.medio.tipo === 'pelicula' ? <><i className="fa-solid fa-film" style={{color: '#e50914', marginRight: '5px'}}></i> Película</> : <><i className="fa-solid fa-tv" style={{color: '#2196f3', marginRight: '5px'}}></i> Serie</>}
+                                        {item.medio.tipo === 'videojuego' ? <><i className="fa-solid fa-gamepad" style={{ color: '#4caf50', marginRight: '5px' }}></i> Videojuego</> : item.medio.tipo === 'pelicula' ? <><i className="fa-solid fa-film" style={{ color: '#e50914', marginRight: '5px' }}></i> Película</> : <><i className="fa-solid fa-tv" style={{ color: '#2196f3', marginRight: '5px' }}></i> Serie</>}
                                     </div>
                                 </div>
                                 <div style={{ padding: '15px', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -153,19 +153,19 @@ function VerMasTarde() {
                     {/* Controles de Paginación */}
                     {totalPages > 1 && (
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '60px' }}>
-                            <button 
+                            <button
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                                 disabled={currentPage === 1}
                                 style={{ padding: '12px 25px', borderRadius: '30px', border: 'none', backgroundColor: currentPage === 1 ? '#333' : '#e50914', color: 'white', fontWeight: 'bold', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background-color 0.3s' }}
                             >
                                 <i className="fa-solid fa-chevron-left"></i> Anterior
                             </button>
-                            
+
                             <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#ccc' }}>
                                 {currentPage} <span style={{ color: '#666', fontWeight: 'normal' }}>de {totalPages}</span>
                             </span>
 
-                            <button 
+                            <button
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                                 disabled={currentPage === totalPages}
                                 style={{ padding: '12px 25px', borderRadius: '30px', border: 'none', backgroundColor: currentPage === totalPages ? '#333' : '#e50914', color: 'white', fontWeight: 'bold', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', transition: 'background-color 0.3s' }}

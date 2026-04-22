@@ -4,7 +4,7 @@ import api from '../services/api';
 import { alerts } from '../utils/swal';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Debounce helper simple para evitar peticiones masivas
+// Un pequeño debounce para no hacer spam de peticiones
 let searchTimeout = null;
 
 function Profile() {
@@ -150,7 +150,7 @@ function Profile() {
     setSearchMedia(prev => ({ ...prev, query, type, loading: true }));
 
     if (searchTimeout) clearTimeout(searchTimeout);
-    
+
     if (!query.trim()) {
       setSearchMedia(prev => ({ ...prev, results: [], loading: false }));
       return;
@@ -170,7 +170,7 @@ function Profile() {
         console.error(e);
         setSearchMedia(prev => ({ ...prev, loading: false }));
       }
-    }, 500); 
+    }, 500);
   };
 
   const selectFavorite = (item, type) => {
@@ -201,10 +201,10 @@ function Profile() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ backgroundColor: '#1e1e1e', padding: '40px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
           <div style={{ position: 'relative' }}>
-            <img 
-              src={editing ? (formData.avatar || 'https://ui-avatars.com/api/?name=' + profile.name + '&background=e50914&color=fff') : getAvatarUrl(profile)} 
-              alt="Avatar" 
-              style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #e50914' }} 
+            <img
+              src={editing ? (formData.avatar || 'https://ui-avatars.com/api/?name=' + profile.name + '&background=e50914&color=fff') : getAvatarUrl(profile)}
+              alt="Avatar"
+              style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #e50914' }}
             />
             {editing && (
               <div style={{ position: 'absolute', bottom: -5, right: -5, display: 'flex', gap: '5px' }}>
@@ -260,7 +260,7 @@ function Profile() {
                 ))}
               </div>
             </div>
-            
+
             <button onClick={() => setEditing(true)} style={{ padding: '12px 25px', borderRadius: '30px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1rem' }}>
               <i className="fa-solid fa-pen-to-square"></i> Editar mi Perfil
             </button>
@@ -293,11 +293,11 @@ function Profile() {
                       </button>
                     )}
                   </div>
-                  
+
                   {!formData[fav.field] ? (
                     <div style={{ position: 'relative' }}>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder={`Buscar ${fav.label.toLowerCase()}...`}
                         value={searchMedia.type === fav.type ? searchMedia.query : ''}
                         onChange={(e) => handleSearchMedia(e.target.value, fav.type)}
@@ -310,15 +310,15 @@ function Profile() {
                           <i className="fa-solid fa-spinner fa-spin" style={{ color: fav.color }}></i>
                         </div>
                       )}
-                      
+
                       {searchMedia.type === fav.type && searchMedia.results.length > 0 && (
                         <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', backgroundColor: '#181818', border: '1px solid #333', borderRadius: '10px', marginTop: '8px', zIndex: 100, boxShadow: '0 10px 25px rgba(0,0,0,0.6)', overflow: 'hidden' }}>
                           {searchMedia.results.map(res => (
-                            <div key={res.id} onClick={() => selectFavorite(res, fav.type)} 
-                              style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #252525', display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.2s' }} 
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor='#2a2a2a'} 
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor='transparent'}>
-                              <img src={fav.type === 'game' ? (res.background_image || '') : (res.poster_path ? 'https://image.tmdb.org/t/p/w92' + res.poster_path : '')} 
+                            <div key={res.id} onClick={() => selectFavorite(res, fav.type)}
+                              style={{ padding: '12px', cursor: 'pointer', borderBottom: '1px solid #252525', display: 'flex', alignItems: 'center', gap: '12px', transition: 'background 0.2s' }}
+                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#2a2a2a'}
+                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                              <img src={fav.type === 'game' ? (res.background_image || '') : (res.poster_path ? 'https://image.tmdb.org/t/p/w92' + res.poster_path : '')}
                                 alt="" style={{ width: '35px', height: '50px', objectFit: 'cover', borderRadius: '6px', backgroundColor: '#000' }} />
                               <div>
                                 <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{res.title || res.name}</div>
@@ -331,8 +331,8 @@ function Profile() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', backgroundColor: '#111', padding: '10px', borderRadius: '8px' }}>
-                       <img src={formData[fav.field].poster_path.startsWith('http') ? formData[fav.field].poster_path : 'https://image.tmdb.org/t/p/w92' + formData[fav.field].poster_path} alt="" style={{ width: '40px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
-                       <span style={{ fontWeight: 'bold' }}>{formData[fav.field].titulo}</span>
+                      <img src={formData[fav.field].poster_path.startsWith('http') ? formData[fav.field].poster_path : 'https://image.tmdb.org/t/p/w92' + formData[fav.field].poster_path} alt="" style={{ width: '40px', height: '60px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <span style={{ fontWeight: 'bold' }}>{formData[fav.field].titulo}</span>
                     </div>
                   )}
                 </div>

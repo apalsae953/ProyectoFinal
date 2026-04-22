@@ -29,45 +29,45 @@ function Detalle() {
   const [myRating, setMyRating] = useState(null);
 
   useEffect(() => {
-    if(localStorage.getItem('auth_token') && datos) {
-        api.get('/interactions/me').then(res => {
-            const data = res.data.data;
-            const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-            
-            if(data.ver_mas_tarde) {
-                setEsVerMasTarde(data.ver_mas_tarde.some(
-                    fav => fav.medio?.tipo === dbTipo && String(fav.medio?.api_id) === String(datos.id)
-                ));
-            }
-            if(data.visto) {
-                setEsVisto(data.visto.some(
-                    v => v.medio?.tipo === dbTipo && String(v.medio?.api_id) === String(datos.id)
-                ));
-            }
-        }).catch(err => console.error("Error al cargar interacciones:", err));
-
-        // Cargar mi nota (para mostrar en el hero sin abrir modal)
+    if (localStorage.getItem('auth_token') && datos) {
+      api.get('/interactions/me').then(res => {
+        const data = res.data.data;
         const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-        api.get('/reviews/' + dbTipo + '/' + datos.id + '/auth').then(res => {
-            const userInfo = JSON.parse(localStorage.getItem('user_info'));
-            if (userInfo && res.data.data) {
-                const mine = res.data.data.find(r => r.user_id === userInfo.id);
-                if (mine) {
-                    setMyRating(mine.puntuacion);
-                    // De paso pre-rellenamos los estados de reseña por si abre el modal
-                    setMyReview(mine);
-                    setUserRating(mine.puntuacion);
-                    setUserComment(mine.comentario || '');
-                }
-            }
-        }).catch(e => console.error("Error cargando mi nota:", e));
+
+        if (data.ver_mas_tarde) {
+          setEsVerMasTarde(data.ver_mas_tarde.some(
+            fav => fav.medio?.tipo === dbTipo && String(fav.medio?.api_id) === String(datos.id)
+          ));
+        }
+        if (data.visto) {
+          setEsVisto(data.visto.some(
+            v => v.medio?.tipo === dbTipo && String(v.medio?.api_id) === String(datos.id)
+          ));
+        }
+      }).catch(err => console.error("Error al cargar interacciones:", err));
+
+      // Cargar mi nota (para mostrar en el hero sin abrir modal)
+      const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
+      api.get('/reviews/' + dbTipo + '/' + datos.id + '/auth').then(res => {
+        const userInfo = JSON.parse(localStorage.getItem('user_info'));
+        if (userInfo && res.data.data) {
+          const mine = res.data.data.find(r => r.user_id === userInfo.id);
+          if (mine) {
+            setMyRating(mine.puntuacion);
+            // Ya dejo esto relleno por si quiero abrir el modal luego
+            setMyReview(mine);
+            setUserRating(mine.puntuacion);
+            setUserComment(mine.comentario || '');
+          }
+        }
+      }).catch(e => console.error("Error cargando mi nota:", e));
     }
   }, [datos, tipo]);
 
   const toggleVerMasTarde = () => {
     if (!localStorage.getItem('auth_token')) {
-        alerts.loginRequired(navigate, 'Debes iniciar sesión');
-        return;
+      alerts.loginRequired(navigate, 'Debes iniciar sesión');
+      return;
     }
 
     // Actualización optimista de UI
@@ -76,67 +76,67 @@ function Detalle() {
     const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
 
     api.post('/interactions/toggle', {
-        api_id: datos.id,
-        tipo_medio: dbTipo,
-        titulo: datos.title || datos.name,
-        poster_path: datos.poster_path || datos.background_image || '',
-        tipo_interaccion: 'ver_mas_tarde'
+      api_id: datos.id,
+      tipo_medio: dbTipo,
+      titulo: datos.title || datos.name,
+      poster_path: datos.poster_path || datos.background_image || '',
+      tipo_interaccion: 'ver_mas_tarde'
     }).then(res => {
-        // Aseguramos la exclusividad si el backend tuvo éxito (aunque ya lo hicimos optimista)
-        if(res.data.is_attached) setEsVisto(false);
+      // Me aseguro de quitarlo del "Ver más tarde" si lo marco como "Visto"
+      if (res.data.is_attached) setEsVisto(false);
     }).catch(err => {
-        console.error("Error toggling ver más tarde:", err);
-        // Si hay error, revertimos el botón
-        setEsVerMasTarde(prev => !prev);
+      console.error("Error toggling ver más tarde:", err);
+      // Si hay error, revertimos el botón
+      setEsVerMasTarde(prev => !prev);
     });
   };
 
   const toggleVisto = () => {
     if (!localStorage.getItem('auth_token')) {
-        alerts.loginRequired(navigate, 'Debes iniciar sesión');
-        return;
+      alerts.loginRequired(navigate, 'Debes iniciar sesión');
+      return;
     }
 
     // Actualización optimista
     setEsVisto(prev => !prev);
-    if(!esVisto) setEsVerMasTarde(false); // Si marcamos como visto, quitamos de ver más tarde
+    if (!esVisto) setEsVerMasTarde(false); // Si lo guardo en Ver más tarde, no puede estar Visto
 
     const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
 
     api.post('/interactions/toggle', {
-        api_id: datos.id,
-        tipo_medio: dbTipo,
-        titulo: datos.title || datos.name,
-        poster_path: datos.poster_path || datos.background_image || '',
-        tipo_interaccion: 'visto'
+      api_id: datos.id,
+      tipo_medio: dbTipo,
+      titulo: datos.title || datos.name,
+      poster_path: datos.poster_path || datos.background_image || '',
+      tipo_interaccion: 'visto'
     }).then(res => {
-        if(res.data.is_attached) setEsVerMasTarde(false);
+      if (res.data.is_attached) setEsVerMasTarde(false);
     }).catch(err => {
-        console.error("Error toggling visto:", err);
-        setEsVisto(prev => !prev);
+      console.error("Error toggling visto:", err);
+      setEsVisto(prev => !prev);
     });
   };
 
   const abrirModalRanking = async () => {
     if (!localStorage.getItem('auth_token')) {
-        alerts.loginRequired(navigate, 'Debes iniciar sesión');
-        return;
+      alerts.loginRequired(navigate, 'Debes iniciar sesión');
+      return;
     }
     setShowRankingModal(true);
     setLoadingRankings(true);
     try {
-        const res = await api.get('/user/rankings');
-        // Filtrar compatibles
-        const compatibles = res.data.filter(r => r.tipo === 'mixed' || (r.tipo === 'movies' && tipo === 'movie') || (r.tipo === 'series' && tipo === 'tv') || (r.tipo === 'games' && tipo === 'game'));
-        setMisRankings(compatibles);
+      const res = await api.get('/user/rankings');
+      // Filtrar compatibles
+      const compatibles = res.data.filter(r => r.tipo === 'mixed' || (r.tipo === 'movies' && tipo === 'movie') || (r.tipo === 'series' && tipo === 'tv') || (r.tipo === 'games' && tipo === 'game'));
+      setMisRankings(compatibles);
     } catch (err) {
-        console.error(err);
+      console.error(err);
     }
     setLoadingRankings(false);
   };
 
   const abrirModalReviews = async () => {
-    // Reset temporal para que fetchReviews pueda cargar los datos de la DB sin conflictos
+    // Reinicio para traer los datos limpios de la BD
     setUserRating(0);
     setUserComment('');
     setShowReviewsModal(true);
@@ -146,63 +146,63 @@ function Detalle() {
   const fetchReviews = async (onlyUpdateList = false) => {
     setLoadingReviews(true);
     try {
-        const token = localStorage.getItem('auth_token');
-        const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-        const endpoint = token ? '/reviews/' + dbTipo + '/' + datos.id + '/auth' : '/reviews/' + dbTipo + '/' + datos.id;
-        
-        const res = await api.get(endpoint);
-        const data = res.data.data;
-        setReviews(data);
+      const token = localStorage.getItem('auth_token');
+      const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
+      const endpoint = token ? '/reviews/' + dbTipo + '/' + datos.id + '/auth' : '/reviews/' + dbTipo + '/' + datos.id;
 
-        // Buscar mi reseña (sólo si no estamos recargando la lista para no borrar lo que escribe el usuario)
-        const userInfo = JSON.parse(localStorage.getItem('user_info'));
-        if (userInfo && !onlyUpdateList) {
-            const mine = data.find(r => r.user_id === userInfo.id);
-            if (mine) {
-                setMyReview(mine);
-                // SÓLO sobreescribimos si el usuario aún no ha escrito nada nuevo en esta sesión del modal
-                setUserRating(prev => (prev === 0 ? mine.puntuacion : prev));
-                setUserComment(prev => (prev === '' ? (mine.comentario || '') : prev));
-            } else {
-                setMyReview(null);
-            }
+      const res = await api.get(endpoint);
+      const data = res.data.data;
+      setReviews(data);
+
+      // Busco la reseña que ya tenía escrita (solo si no la acabo de modificar)
+      const userInfo = JSON.parse(localStorage.getItem('user_info'));
+      if (userInfo && !onlyUpdateList) {
+        const mine = data.find(r => r.user_id === userInfo.id);
+        if (mine) {
+          setMyReview(mine);
+          // SÓLO sobreescribimos si el usuario aún no ha escrito nada nuevo en esta sesión del modal
+          setUserRating(prev => (prev === 0 ? mine.puntuacion : prev));
+          setUserComment(prev => (prev === '' ? (mine.comentario || '') : prev));
+        } else {
+          setMyReview(null);
         }
+      }
     } catch (err) {
-        console.error("Error al cargar reseñas:", err);
+      console.error("Error al cargar reseñas:", err);
     }
     setLoadingReviews(false);
   };
 
   const handleSaveReview = async () => {
     if (!localStorage.getItem('auth_token')) {
-        alerts.loginRequired(navigate, 'Login requerido');
-        return;
+      alerts.loginRequired(navigate, 'Login requerido');
+      return;
     }
     if (userRating === 0) {
-        alerts.error('Debes elegir una puntuación');
-        return;
+      alerts.error('Debes elegir una puntuación');
+      return;
     }
 
     setSubmittingReview(true);
     try {
-        const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
-        await api.post('/reviews', {
-            api_id: datos.id,
-            tipo: dbTipo,
-            titulo: datos.title || datos.name,
-            poster_path: datos.poster_path || datos.background_image || '',
-            puntuacion: userRating,
-            comentario: userComment
-        });
-        localStorage.getItem('auth_token'); // side effect
-        setEsVerMasTarde(false);
-        setEsVisto(true);
-        setMyRating(userRating); // Actualizar nota en el Hero
-        alerts.success('¡Puntuado!');
-        fetchReviews();
-        fetchDatos(false); // Actualizar nota media sin F5
+      const dbTipo = tipo === 'game' ? 'videojuego' : (tipo === 'movie' ? 'pelicula' : 'serie');
+      await api.post('/reviews', {
+        api_id: datos.id,
+        tipo: dbTipo,
+        titulo: datos.title || datos.name,
+        poster_path: datos.poster_path || datos.background_image || '',
+        puntuacion: userRating,
+        comentario: userComment
+      });
+      localStorage.getItem('auth_token'); // Para forzar el check de sesión
+      setEsVerMasTarde(false);
+      setEsVisto(true);
+      setMyRating(userRating); // Actualizar nota en el Hero
+      alerts.success('¡Puntuado!');
+      fetchReviews();
+      fetchDatos(false); // Refresco la nota media global sin recargar la página
     } catch (err) {
-        console.error(err);
+      console.error(err);
     }
     setSubmittingReview(false);
   };
@@ -212,27 +212,27 @@ function Detalle() {
     const confirm = await alerts.confirm('¿Eliminar tu reseña?', 'No podrás recuperar el comentario.', 'Sí, eliminar');
 
     if (confirm.isConfirmed) {
-        try {
-            await api.delete('/reviews/' + myReview.id);
-            setMyReview(null);
-            setMyRating(null); // Borrar nota del Hero
-            setUserRating(0);
-            setUserComment('');
-            fetchReviews();
-            fetchDatos(false); // Actualizar nota media sin F5
-        } catch (err) { console.error(err); }
+      try {
+        await api.delete('/reviews/' + myReview.id);
+        setMyReview(null);
+        setMyRating(null); // Borrar nota del Hero
+        setUserRating(0);
+        setUserComment('');
+        fetchReviews();
+        fetchDatos(false); // Refresco la media global
+      } catch (err) { console.error(err); }
     }
   };
 
   const handleVote = async (reviewId, type) => {
     if (!localStorage.getItem('auth_token')) return;
     try {
-        await api.post('/reviews/' + reviewId + '/vote', { type });
-        fetchReviews();
+      await api.post('/reviews/' + reviewId + '/vote', { type });
+      fetchReviews();
     } catch (err) {
-        if (err.response?.status === 403) {
-            alerts.info('No puedes votar tu propia reseña');
-        }
+      if (err.response?.status === 403) {
+        alerts.info('No puedes votar tu propia reseña');
+      }
     }
   };
 
@@ -245,15 +245,15 @@ function Detalle() {
     else if (tipo === 'game') endpoint = '/games/' + id;
 
     try {
-        const respuesta = await api.get(endpoint);
-        setDatos(respuesta.data.data);
+      const respuesta = await api.get(endpoint);
+      setDatos(respuesta.data.data);
     } catch (err) {
-        if (showLoading) {
-            console.error("Error al cargar detalle:", err);
-            setError(true);
-        }
+      if (showLoading) {
+        console.error("Error al cargar detalle:", err);
+        setError(true);
+      }
     } finally {
-        if (showLoading) setCargando(false);
+      if (showLoading) setCargando(false);
     }
   };
 
@@ -290,10 +290,10 @@ function Detalle() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ color: 'white', minHeight: '100vh' }}>
-      
+
       {/* SECCIÓN HERO (Cinematográfica y con espacio arriba relleno) */}
       <div style={{ position: 'relative', width: '100%', minHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        
+
         {/* FONDO (Backdrop) */}
         {backdrop && (
           <motion.div
@@ -303,19 +303,19 @@ function Detalle() {
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'url(' + backdrop + ')', backgroundSize: 'cover', backgroundPosition: 'center 20%', filter: 'brightness(0.3)', zIndex: 0 }}
           />
         )}
-        
+
         {/* DEGRADADO INTEGRADO */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '100%', background: 'linear-gradient(to top, #121212 5%, transparent 70%, rgba(0,0,0,0.5) 100%)', zIndex: 1 }} />
 
         {/* CONTENEDOR HERO - LAYOUT POR FILAS */}
         <div style={{ position: 'relative', zIndex: 10, width: '92%', maxWidth: '1400px', margin: '0 auto', padding: '25px 0', display: 'flex', flexDirection: 'column', gap: '30px' }}>
-          
+
           {/* FILA 1: CABECERA (BOTÓN VOLVER + METADATOS) -> ESTO RELLENA EL CUADRADO ROJO */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-            <motion.button 
-              whileHover={{ scale: 1.05 }} 
+            <motion.button
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate(-1)} 
+              onClick={() => navigate(-1)}
               style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '10px 22px', borderRadius: '40px', cursor: 'pointer', backdropFilter: 'blur(10px)', fontSize: '13px', fontWeight: '900', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               <i className="fa-solid fa-arrow-left"></i> VOLVER
@@ -336,7 +336,7 @@ function Detalle() {
 
           {/* FILA 2: CONTENIDO PRINCIPAL (PÓSTER + TÍTULO E INFO) */}
           <div className="detalle-main-row" style={{ display: 'flex', gap: '60px', alignItems: 'center', flexWrap: 'wrap', marginTop: '10px' }}>
-            
+
             {/* Póster */}
             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
               <img className="detalle-poster" src={poster} alt={datos.title || datos.name} style={{ width: '300px', borderRadius: '15px', boxShadow: '0 20px 60px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -351,7 +351,7 @@ function Detalle() {
               {/* Fila de info (Año, Puntuaciones, Duración) */}
               <motion.div className="detalle-info-row" initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: '30px', marginTop: '35px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ backgroundColor: '#e50914', color: 'white', padding: '6px 16px', borderRadius: '6px', fontWeight: '900', fontSize: '20px' }}>{datos.year}</div>
-                
+
                 {/* Puntuaciones */}
                 <div className="detalle-scores-bar" style={{ display: 'flex', gap: '20px', padding: '10px 25px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '15px', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }}>
                   <div style={{ textAlign: 'center' }}>
@@ -424,7 +424,7 @@ function Detalle() {
 
       {/* CONTENIDO PRINCIPAL (SINOPSIS, TRAILER, REPARTO) */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}>
-        
+
         {/* Sinopsis */}
         <section style={{ marginBottom: '60px' }}>
           <h2 style={{ borderLeft: '5px solid #e50914', paddingLeft: '20px', marginBottom: '25px', fontSize: '2rem' }}>Sinopsis</h2>
@@ -448,7 +448,7 @@ function Detalle() {
           <h2 style={{ borderLeft: '5px solid #2196f3', paddingLeft: '20px', marginBottom: '25px', fontSize: '2rem' }}>
             {tipo === 'game' ? 'Dónde Comprarlo' : 'Dónde Verlo'}
           </h2>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Hacemos lo mismo para juegos */}
 
@@ -457,11 +457,11 @@ function Detalle() {
               {tipo === 'game' ? (
                 (datos.tiendas && datos.tiendas.length > 0) ? (
                   datos.tiendas.map((t, idx) => (
-                    <a key={idx} href={t.url} target="_blank" rel="noopener noreferrer" style={{ padding: '15px 30px', backgroundColor: '#111', border: '1px solid #333', borderRadius: '15px', color: 'white', textDecoration: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.3s' }} onMouseEnter={e => {e.currentTarget.style.borderColor = '#2196f3'; e.currentTarget.style.backgroundColor = 'rgba(33,150,243,0.1)'}} onMouseLeave={e => {e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.backgroundColor = '#111'}}>
-                      <i className="fa-solid fa-cart-shopping" style={{color:'#2196f3'}}></i> {t.nombre}
+                    <a key={idx} href={t.url} target="_blank" rel="noopener noreferrer" style={{ padding: '15px 30px', backgroundColor: '#111', border: '1px solid #333', borderRadius: '15px', color: 'white', textDecoration: 'none', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.3s' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#2196f3'; e.currentTarget.style.backgroundColor = 'rgba(33,150,243,0.1)' }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.backgroundColor = '#111' }}>
+                      <i className="fa-solid fa-cart-shopping" style={{ color: '#2196f3' }}></i> {t.nombre}
                     </a>
                   ))
-                ) : !datos.link_primario && <p style={{color: '#888'}}>No se han encontrado tiendas digitales disponibles.</p>
+                ) : !datos.link_primario && <p style={{ color: '#888' }}>No se han encontrado tiendas digitales disponibles.</p>
               ) : (
                 (datos.donde_ver && (datos.donde_ver.streaming.length > 0 || datos.donde_ver.alquiler.length > 0 || datos.donde_ver.compra.length > 0)) ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '25px', width: '100%', backgroundColor: '#111', padding: '30px', borderRadius: '25px', border: '1px solid #222' }}>
@@ -487,7 +487,7 @@ function Detalle() {
                     )}
 
                   </div>
-                ) : !datos.link_primario && <p style={{color: '#888'}}>No hay información de streaming disponible para España en este momento.</p>
+                ) : !datos.link_primario && <p style={{ color: '#888' }}>No hay información de streaming disponible para España en este momento.</p>
               )}
             </div>
           </div>
@@ -540,114 +540,114 @@ function Detalle() {
         {showReviewsModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(10px)' }}>
             <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} style={{ backgroundColor: '#161616', width: '95%', maxWidth: '900px', height: '85vh', borderRadius: '25px', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid #333', boxShadow: '0 30px 100px rgba(0,0,0,0.5)' }}>
-                
-                {/* Header Modal */}
-                <div style={{ padding: '25px 40px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>Reseñas de la comunidad</h2>
-                        <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '0.9rem' }}>Comparte tu opinión sobre {datos.title || datos.name}</p>
+
+              {/* Header Modal */}
+              <div style={{ padding: '25px 40px', borderBottom: '1px solid #333', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '900' }}>Reseñas de la comunidad</h2>
+                  <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '0.9rem' }}>Comparte tu opinión sobre {datos.title || datos.name}</p>
+                </div>
+                <i className="fa-solid fa-xmark" style={{ fontSize: '1.5rem', cursor: 'pointer', color: '#555' }} onClick={() => setShowReviewsModal(false)}></i>
+              </div>
+
+              <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', overflow: 'hidden' }}>
+
+                {/* IZQUIERDA: Formulario de puntuación */}
+                <div style={{ padding: '40px', backgroundColor: '#1c1c1c', borderRight: '1px solid #333', overflowY: 'auto' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '25px', color: '#e50914', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>{myReview ? 'Tu Valoración' : 'Añadir Valoración'}</h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#111', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}>
+                    <div style={{ fontSize: '3rem', fontWeight: '900', color: '#e50914', marginBottom: '10px' }}>{userRating || '0'}</div>
+                    <div style={{ display: 'flex', gap: '5px', marginBottom: '20px' }}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
+                        <i
+                          key={star}
+                          className={star <= Math.floor(userRating) ? "fa-solid fa-star" : "fa-regular fa-star"}
+                          style={{ color: star <= Math.floor(userRating) ? '#e50914' : '#444', cursor: 'pointer', fontSize: '1.2rem' }}
+                          onClick={() => setUserRating(star)}
+                        ></i>
+                      ))}
                     </div>
-                    <i className="fa-solid fa-xmark" style={{ fontSize: '1.5rem', cursor: 'pointer', color: '#555' }} onClick={() => setShowReviewsModal(false)}></i>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                      <span style={{ fontSize: '0.9rem', color: '#888', fontWeight: 'bold' }}>Ajustar nota:</span>
+                      <input
+                        type="number"
+                        min="0" max="10" step="0.1"
+                        value={userRating}
+                        onChange={e => {
+                          let val = parseFloat(e.target.value);
+                          if (val > 10) val = 10;
+                          if (val < 0) val = 0;
+                          setUserRating(val);
+                        }}
+                        style={{ flex: 1, backgroundColor: '#222', border: '1px solid #444', borderRadius: '8px', padding: '8px', color: 'white', fontWeight: 'bold', textAlign: 'center', outline: 'none' }}
+                      />
+                    </div>
+                  </div>
+
+                  <label style={{ fontSize: '0.8rem', color: '#888', textTransform: 'uppercase', fontWeight: 'bold', marginTop: '20px', display: 'block' }}>Tu Reseña (Opcional)</label>
+                  <textarea
+                    value={userComment}
+                    onChange={e => setUserComment(e.target.value)}
+                    placeholder="¿Qué te ha parecido? (Opcional si solo quieres puntuar)"
+                    style={{ width: '100%', marginTop: '10px', backgroundColor: '#111', border: '1px solid #333', borderRadius: '15px', padding: '15px', color: 'white', fontSize: '1rem', outline: 'none', resize: 'none', height: '150px' }}
+                  />
+
+                  <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <button
+                      onClick={handleSaveReview}
+                      disabled={submittingReview}
+                      style={{ width: '100%', padding: '15px', borderRadius: '12px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
+                    >
+                      {submittingReview ? <i className="fa-solid fa-spinner fa-spin"></i> : (myReview ? 'ACTUALIZAR RESEÑA' : 'GUARDAR Y MARCAR VISTO')}
+                    </button>
+                    {myReview && (
+                      <button onClick={handleDeleteReview} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #444', backgroundColor: 'transparent', color: '#e50914', fontWeight: 'bold', cursor: 'pointer' }}>ELIMINAR MI RESEÑA</button>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 1.5fr', overflow: 'hidden' }}>
-                    
-                    {/* IZQUIERDA: Formulario de puntuación */}
-                    <div style={{ padding: '40px', backgroundColor: '#1c1c1c', borderRight: '1px solid #333', overflowY: 'auto' }}>
-                        <h3 style={{ marginTop: 0, marginBottom: '25px', color: '#e50914', fontSize: '1.2rem', textTransform: 'uppercase', letterSpacing: '2px' }}>{myReview ? 'Tu Valoración' : 'Añadir Valoración'}</h3>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#111', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}>
-                            <div style={{ fontSize: '3rem', fontWeight: '900', color: '#e50914', marginBottom: '10px' }}>{userRating || '0'}</div>
-                            <div style={{ display: 'flex', gap: '5px', marginBottom: '20px' }}>
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
-                                    <i 
-                                        key={star} 
-                                        className={star <= Math.floor(userRating) ? "fa-solid fa-star" : "fa-regular fa-star"} 
-                                        style={{ color: star <= Math.floor(userRating) ? '#e50914' : '#444', cursor: 'pointer', fontSize: '1.2rem' }}
-                                        onClick={() => setUserRating(star)}
-                                    ></i>
-                                ))}
+                {/* DERECHA: Lista de reseñas */}
+                <div style={{ padding: '0 40px', overflowY: 'auto' }}>
+                  {loadingReviews ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}><i className="fa-solid fa-spinner fa-spin fa-3x" style={{ color: '#e50914' }}></i></div>
+                  ) : reviews.filter(r => r.comentario && r.comentario.trim() !== '').length > 0 ? (
+                    <div style={{ padding: '30px 0' }}>
+                      {reviews.filter(r => r.comentario && r.comentario.trim() !== '').map((rev, i) => (
+                        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} key={rev.id} style={{ backgroundColor: '#1c1c1c', padding: '25px', borderRadius: '20px', marginBottom: '20px', border: rev.user_id === myReview?.user_id ? '1px solid #e50914' : '1px solid #2a2a2a' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <img src={av(rev.user)} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #333' }} />
+                              <div>
+                                <div style={{ fontWeight: 'bold' }}>{rev.user?.name} {rev.user_id === myReview?.user_id && <span style={{ color: '#e50914', fontSize: '0.7rem', marginLeft: '5px' }}>(TÚ)</span>}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#666' }}>{new Date(rev.created_at).toLocaleDateString()}</div>
+                              </div>
                             </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
-                                <span style={{fontSize:'0.9rem', color:'#888', fontWeight:'bold'}}>Ajustar nota:</span>
-                                <input 
-                                    type="number" 
-                                    min="0" max="10" step="0.1" 
-                                    value={userRating} 
-                                    onChange={e => {
-                                        let val = parseFloat(e.target.value);
-                                        if (val > 10) val = 10;
-                                        if (val < 0) val = 0;
-                                        setUserRating(val);
-                                    }}
-                                    style={{ flex: 1, backgroundColor: '#222', border: '1px solid #444', borderRadius: '8px', padding: '8px', color: 'white', fontWeight: 'bold', textAlign: 'center', outline: 'none' }}
-                                />
-                            </div>
-                        </div>
+                            <div style={{ padding: '5px 15px', backgroundColor: '#333', borderRadius: '10px', color: '#e50914', fontWeight: '900', fontSize: '1.2rem' }}>{Number(rev.puntuacion).toFixed(1)}</div>
+                          </div>
+                          {rev.comentario && <p style={{ color: '#ccc', lineHeight: '1.6', margin: '0 0 20px 0' }}>{rev.comentario}</p>}
 
-                        <label style={{ fontSize: '0.8rem', color: '#888', textTransform: 'uppercase', fontWeight: 'bold', marginTop: '20px', display: 'block' }}>Tu Reseña (Opcional)</label>
-                        <textarea 
-                            value={userComment} 
-                            onChange={e => setUserComment(e.target.value)}
-                            placeholder="¿Qué te ha parecido? (Opcional si solo quieres puntuar)"
-                            style={{ width: '100%', marginTop: '10px', backgroundColor: '#111', border: '1px solid #333', borderRadius: '15px', padding: '15px', color: 'white', fontSize: '1rem', outline: 'none', resize: 'none', height: '150px' }}
-                        />
-
-                        <div style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <button 
-                                onClick={handleSaveReview}
-                                disabled={submittingReview}
-                                style={{ width: '100%', padding: '15px', borderRadius: '12px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}
-                            >
-                                {submittingReview ? <i className="fa-solid fa-spinner fa-spin"></i> : (myReview ? 'ACTUALIZAR RESEÑA' : 'GUARDAR Y MARCAR VISTO')}
+                          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderTop: '1px solid #2a2a2a', paddingTop: '15px' }}>
+                            <button onClick={() => handleVote(rev.id, 'like')} style={{ background: 'transparent', border: 'none', color: rev.user_vote_type === 'like' ? '#4caf50' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem', fontWeight: 'bold' }}>
+                              <i className="fa-solid fa-thumbs-up"></i> {rev.likes_count}
                             </button>
-                            {myReview && (
-                                <button onClick={handleDeleteReview} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #444', backgroundColor: 'transparent', color: '#e50914', fontWeight: 'bold', cursor: 'pointer' }}>ELIMINAR MI RESEÑA</button>
-                            )}
-                        </div>
+                            <button onClick={() => handleVote(rev.id, 'dislike')} style={{ background: 'transparent', border: 'none', color: rev.user_vote_type === 'dislike' ? '#e50914' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem', fontWeight: 'bold' }}>
+                              <i className="fa-solid fa-thumbs-down"></i> {rev.dislikes_count}
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
-
-                    {/* DERECHA: Lista de reseñas */}
-                    <div style={{ padding: '0 40px', overflowY: 'auto' }}>
-                        {loadingReviews ? (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}><i className="fa-solid fa-spinner fa-spin fa-3x" style={{color:'#e50914'}}></i></div>
-                        ) : reviews.filter(r => r.comentario && r.comentario.trim() !== '').length > 0 ? (
-                            <div style={{ padding: '30px 0' }}>
-                                {reviews.filter(r => r.comentario && r.comentario.trim() !== '').map((rev, i) => (
-                                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} key={rev.id} style={{ backgroundColor: '#1c1c1c', padding: '25px', borderRadius: '20px', marginBottom: '20px', border: rev.user_id === myReview?.user_id ? '1px solid #e50914' : '1px solid #2a2a2a' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <img src={av(rev.user)} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #333' }} />
-                                                <div>
-                                                    <div style={{fontWeight:'bold'}}>{rev.user?.name} {rev.user_id === myReview?.user_id && <span style={{color:'#e50914', fontSize:'0.7rem', marginLeft:'5px'}}>(TÚ)</span>}</div>
-                                                    <div style={{fontSize:'0.8rem', color:'#666'}}>{new Date(rev.created_at).toLocaleDateString()}</div>
-                                                </div>
-                                            </div>
-                                            <div style={{ padding: '5px 15px', backgroundColor: '#333', borderRadius: '10px', color: '#e50914', fontWeight: '900', fontSize: '1.2rem' }}>{Number(rev.puntuacion).toFixed(1)}</div>
-                                        </div>
-                                        {rev.comentario && <p style={{ color: '#ccc', lineHeight: '1.6', margin: '0 0 20px 0' }}>{rev.comentario}</p>}
-                                        
-                                        <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderTop: '1px solid #2a2a2a', paddingTop: '15px' }}>
-                                            <button onClick={() => handleVote(rev.id, 'like')} style={{ background: 'transparent', border: 'none', color: rev.user_vote_type === 'like' ? '#4caf50' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem', fontWeight: 'bold' }}>
-                                                <i className="fa-solid fa-thumbs-up"></i> {rev.likes_count}
-                                            </button>
-                                            <button onClick={() => handleVote(rev.id, 'dislike')} style={{ background: 'transparent', border: 'none', color: rev.user_vote_type === 'dislike' ? '#e50914' : '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '1rem', fontWeight: 'bold' }}>
-                                                <i className="fa-solid fa-thumbs-down"></i> {rev.dislikes_count}
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: '100px 40px' }}>
-                                <i className="fa-solid fa-comment-slash fa-4x" style={{ color: '#2a2a2a', marginBottom: '20px' }}></i>
-                                <h3 style={{ color: '#555' }}>Nadie ha escrito un comentario todavía.</h3>
-                                <p style={{ color: '#444' }}>¡Sé el primero en compartir tu opinión!</p>
-                            </div>
-                        )}
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '100px 40px' }}>
+                      <i className="fa-solid fa-comment-slash fa-4x" style={{ color: '#2a2a2a', marginBottom: '20px' }}></i>
+                      <h3 style={{ color: '#555' }}>Nadie ha escrito un comentario todavía.</h3>
+                      <p style={{ color: '#444' }}>¡Sé el primero en compartir tu opinión!</p>
                     </div>
+                  )}
                 </div>
+              </div>
 
             </motion.div>
           </div>
@@ -659,32 +659,32 @@ function Detalle() {
         {showRankingModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={{ backgroundColor: '#1e1e1e', padding: '30px', borderRadius: '20px', width: '90%', maxWidth: '450px', border: '1px solid #333', boxShadow: '0 20px 50px rgba(0,0,0,0.8)' }}>
-                <h3 style={{ marginTop: 0, marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.6rem', fontWeight: '900' }}>
-                    <span style={{display:'flex', alignItems:'center', gap:'10px'}}><i className="fa-solid fa-ranking-star" style={{color:'#e50914'}}></i> Añadir a Ranking</span>
-                    <i className="fa-solid fa-xmark" style={{ cursor: 'pointer', color: '#888', transition:'color 0.2s' }} onMouseEnter={e=>e.target.style.color='white'} onMouseLeave={e=>e.target.style.color='#888'} onClick={() => setShowRankingModal(false)}></i>
-                </h3>
-                
-                {loadingRankings ? (
-                    <div style={{ textAlign: 'center', padding: '40px' }}><i className="fa-solid fa-spinner fa-spin fa-2x" style={{color:'#e50914'}}></i></div>
-                ) : misRankings.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '5px' }}>
-                        {misRankings.map(r => (
-                            <button key={r.id} onClick={() => añadirItem(r.id)} style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#2a2a2a', border: '1px solid #444', color: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }} onMouseEnter={e => {e.currentTarget.style.backgroundColor='#3a3a3a'; e.currentTarget.style.borderColor='#e50914'}} onMouseLeave={e => {e.currentTarget.style.backgroundColor='#2a2a2a'; e.currentTarget.style.borderColor='#444'}}>
-                                <div style={{flex: 1}}>
-                                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{r.titulo}</h4>
-                                    <div style={{ fontSize: '0.85rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', fontWeight:'bold' }}>{r.tipo === 'mixed' ? 'Cualquier Medio' : r.tipo}</div>
-                                </div>
-                                <i className="fa-solid fa-plus" style={{ color: '#e50914', fontSize: '1.2rem', padding: '10px', backgroundColor: 'rgba(229,9,20,0.1)', borderRadius: '50%' }}></i>
-                            </button>
-                        ))}
-                    </div>
-                ) : (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#aaa' }}>
-                        <i className="fa-solid fa-box-open fa-3x" style={{ marginBottom: '20px', color: '#444' }}></i>
-                        <p style={{fontSize:'1.1rem'}}>No tienes rankings compatibles con este tipo de contenido.</p>
-                        <button onClick={() => {setShowRankingModal(false); navigate('/rankings')}} style={{ marginTop: '20px', padding: '12px 25px', borderRadius: '8px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize:'1rem' }}>Crear Ranking Nuevo</button>
-                    </div>
-                )}
+              <h3 style={{ marginTop: 0, marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.6rem', fontWeight: '900' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><i className="fa-solid fa-ranking-star" style={{ color: '#e50914' }}></i> Añadir a Ranking</span>
+                <i className="fa-solid fa-xmark" style={{ cursor: 'pointer', color: '#888', transition: 'color 0.2s' }} onMouseEnter={e => e.target.style.color = 'white'} onMouseLeave={e => e.target.style.color = '#888'} onClick={() => setShowRankingModal(false)}></i>
+              </h3>
+
+              {loadingRankings ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}><i className="fa-solid fa-spinner fa-spin fa-2x" style={{ color: '#e50914' }}></i></div>
+              ) : misRankings.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '5px' }}>
+                  {misRankings.map(r => (
+                    <button key={r.id} onClick={() => añadirItem(r.id)} style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#2a2a2a', border: '1px solid #444', color: 'white', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#3a3a3a'; e.currentTarget.style.borderColor = '#e50914' }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#2a2a2a'; e.currentTarget.style.borderColor = '#444' }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{r.titulo}</h4>
+                        <div style={{ fontSize: '0.85rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>{r.tipo === 'mixed' ? 'Cualquier Medio' : r.tipo}</div>
+                      </div>
+                      <i className="fa-solid fa-plus" style={{ color: '#e50914', fontSize: '1.2rem', padding: '10px', backgroundColor: 'rgba(229,9,20,0.1)', borderRadius: '50%' }}></i>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: '#aaa' }}>
+                  <i className="fa-solid fa-box-open fa-3x" style={{ marginBottom: '20px', color: '#444' }}></i>
+                  <p style={{ fontSize: '1.1rem' }}>No tienes rankings compatibles con este tipo de contenido.</p>
+                  <button onClick={() => { setShowRankingModal(false); navigate('/rankings') }} style={{ marginTop: '20px', padding: '12px 25px', borderRadius: '8px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '1rem' }}>Crear Ranking Nuevo</button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}

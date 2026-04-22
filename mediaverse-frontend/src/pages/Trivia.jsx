@@ -30,7 +30,7 @@ function Trivia() {
     const [cargando, setCargando] = useState(true);
     const [records, setRecords] = useState({}); // { cuestionario_id: best_score }
 
-    // Estado del juego
+    // Variables para el juego
     const [quizActual, setQuizActual] = useState(null);
     const [preguntas, setPreguntas] = useState([]);
     const [preguntaIndex, setPreguntaIndex] = useState(0);
@@ -53,8 +53,8 @@ function Trivia() {
         const fetchQuestionnaires = async () => {
             try {
                 const res = await api.get('/trivia');
-                // Laravel response commonly has { success, data }
-                const data = res.data.data || res.data; 
+                // Laravel devuelve { success, data }
+                const data = res.data.data || res.data;
                 setCuestionarios(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error('Error cargando trivias:', err);
@@ -85,7 +85,7 @@ function Trivia() {
         fetchUserBestScores();
     }, []);
 
-    // Tiempo de la pregunta
+    // Contador de tiempo de cada pregunta
     useEffect(() => {
         if (fase !== 'jugando' || respondida) return;
 
@@ -105,7 +105,7 @@ function Trivia() {
         return () => clearInterval(timerRef.current);
     }, [fase, preguntaIndex, respondida]);
 
-    // Countdown antes de empezar
+    // Cuenta atrás antes de empezar
     useEffect(() => {
         if (fase !== 'countdown') return;
         if (countdownNum <= 0) {
@@ -176,7 +176,7 @@ function Trivia() {
             setRacha(0);
         }
 
-        // Auto-avanzar tras 1.8s
+        // Paso a la siguiente tras casi 2 segundos
         setTimeout(() => siguientePregunta(), 1800);
     };
 
@@ -202,8 +202,8 @@ function Trivia() {
                 puntuacion: scoreToSave,
                 tiempo_tardado_segundos: tiempoTotal
             });
-            
-            // Si es record, avisamos de manera sutil
+
+            // Si es record, avisamos
             const currentRecord = records[quizActual.id] || 0;
             if (scoreToSave > currentRecord) {
                 alerts.success('¡Nuevo récord semanal en ' + quizActual.titulo + '!');
@@ -229,9 +229,9 @@ function Trivia() {
         tiempoTotalRef.current = 0;
     };
 
-    // ===================== RENDERIZADO =====================
 
-    // LOADING
+
+    // Pantalla de carga
     if (cargando) {
         return (
             <div style={{ padding: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
@@ -251,7 +251,7 @@ function Trivia() {
     if (fase === 'menu') {
         return (
             <div style={{ paddingBottom: '60px', maxWidth: '950px', margin: '0 auto' }}>
-                {/* Header */}
+                {/* Cabecera */}
                 <div style={{ textAlign: 'center', marginBottom: '50px' }}>
                     <h1 className="hero-title" style={{ color: 'white', fontSize: '2.8rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: '10px' }}>
                         <i className="fa-solid fa-brain" style={{ color: '#e50914', marginRight: '15px' }}></i>
@@ -262,13 +262,13 @@ function Trivia() {
                     </p>
                 </div>
 
-                {/* Cuestionarios */}
-                <div className="responsive-grid" style={{ 
-                    padding: '0 20px', 
-                    display: 'flex', 
-                    flexWrap: 'wrap', 
-                    justifyContent: 'center', 
-                    gap: '30px' 
+                {/* Lista de cuestionarios */}
+                <div className="responsive-grid" style={{
+                    padding: '0 20px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                    gap: '30px'
                 }}>
                     {cuestionarios.map((quiz, i) => {
                         const catColor = CATEGORY_COLORS[quiz.categoria] || '#e50914';
@@ -305,7 +305,7 @@ function Trivia() {
                                     e.currentTarget.style.boxShadow = 'none';
                                 }}
                             >
-                                {/* Glow de fondo */}
+                                {/* Le meto un efectito de glow de fondo */}
                                 <div style={{
                                     position: 'absolute', top: '-50px', right: '-50px',
                                     width: '150px', height: '150px',
@@ -323,7 +323,7 @@ function Trivia() {
 
                                 {/* Titulo */}
                                 <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>
-                                {quiz.titulo}
+                                    {quiz.titulo}
                                 </h2>
 
                                 {/* Record si existe */}
@@ -351,7 +351,7 @@ function Trivia() {
                                     }}>
                                         {quiz.categoria.replace('_', ' ')}
                                     </span>
-                                    
+
                                     <span style={{
                                         backgroundColor: 'rgba(255,255,255,0.06)', color: '#aaa',
                                         padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600
@@ -391,7 +391,7 @@ function Trivia() {
         );
     }
 
-    // Cuenta atrás
+    // Pantalla de la cuenta atrás
     if (fase === 'countdown') {
         return (
             <div style={{
@@ -432,23 +432,23 @@ function Trivia() {
         );
     }
 
-    // JUGANDO
+    // La pantalla del juego
     if (fase === 'jugando' && preguntas.length > 0) {
         const preguntaActual = preguntas[preguntaIndex];
-        if (!preguntaActual) return null; // Defensive check
+        if (!preguntaActual) return null; // Por si acaso no carga la pregunta
 
         const tiempoMax = 15;
         const porcentajeTiempo = (tiempoRestante / tiempoMax) * 100;
         const colorTiempo = tiempoRestante <= 5 ? '#f44336' : tiempoRestante <= 10 ? '#ff9800' : '#4caf50';
         const catColor = CATEGORY_COLORS[quizActual?.categoria] || '#e50914';
 
-        // Letras para las opciones
+        // Las letras de las respuestas
         const letras = ['A', 'B', 'C', 'D'];
         const coloresOpciones = ['#e50914', '#2196f3', '#ff9800', '#4caf50'];
 
         return (
             <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '40px' }}>
-                {/* Barra superior: progreso + puntuacion */}
+                {/* La barra de arriba con la info */}
                 <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     marginBottom: '20px', padding: '0 5px'
@@ -476,7 +476,7 @@ function Trivia() {
                     </div>
                 </div>
 
-                {/* Barra de progreso de preguntas */}
+                {/* La barrita de progreso */}
                 <div style={{
                     display: 'flex', gap: '4px', marginBottom: '25px'
                 }}>
@@ -489,7 +489,7 @@ function Trivia() {
                     ))}
                 </div>
 
-                {/* Timer circular */}
+                {/* El circulito del tiempo */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '25px' }}>
                     <div style={{
                         position: 'relative', width: '70px', height: '70px'
@@ -548,7 +548,7 @@ function Trivia() {
                             </h2>
                         </div>
 
-                        {/* Opciones */}
+                        {/* Y aquí las respuestas posibles */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                             {preguntaActual.respuestas.map((resp, idx) => {
                                 let bgColor = coloresOpciones[idx] + '15';
@@ -598,7 +598,7 @@ function Trivia() {
                                             alignItems: 'center', justifyContent: 'center',
                                             backgroundColor: respondida && resp.es_correcta ? '#4caf50'
                                                 : respondida && seleccion === idx && !resp.es_correcta ? '#f44336'
-                                                : coloresOpciones[idx],
+                                                    : coloresOpciones[idx],
                                             fontWeight: 900, fontSize: '0.9rem'
                                         }}>
                                             {respondida && resp.es_correcta ? (
