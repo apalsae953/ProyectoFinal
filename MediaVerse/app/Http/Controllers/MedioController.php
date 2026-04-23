@@ -353,15 +353,21 @@ class MedioController extends Controller
         try {
             $token = config('services.tmdb.key');
             $page = (int) $request->query('page', 1);
+            $year = $request->query('year');
             $limit = 20;
+
+            $params = ['api_key' => $token, 'language' => 'es-ES', 'query' => $query];
+            if ($year) {
+                $params['first_air_date_year'] = $year;
+            }
 
             // Peticiones concurrentes TMDB
             $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', array_merge($params, ['page' => 1])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', array_merge($params, ['page' => 2])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', array_merge($params, ['page' => 3])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', array_merge($params, ['page' => 4])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', array_merge($params, ['page' => 5])),
             ]);
 
             $allResults = [];
@@ -381,10 +387,13 @@ class MedioController extends Controller
                 $validWords = array_filter($words, fn($w) => strlen($w) >= 3);
 
                 if (!empty($validWords)) {
-                    $fallbackPool = \Illuminate\Support\Facades\Http::pool(function ($pool) use ($token, $validWords) {
+                    $fallbackPool = \Illuminate\Support\Facades\Http::pool(function ($pool) use ($token, $validWords, $params) {
                         $reqs = [];
                         foreach ($validWords as $w) {
-                            $reqs[] = $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', ['api_key' => $token, 'language' => 'es-ES', 'query' => $w, 'page' => 1]);
+                            $p = $params;
+                            $p['query'] = $w;
+                            $p['page'] = 1;
+                            $reqs[] = $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/tv', $p);
                         }
                         return $reqs;
                     });
@@ -486,20 +495,26 @@ class MedioController extends Controller
         try {
             $token = config('services.tmdb.key');
             $page = (int) $request->query('page', 1);
+            $year = $request->query('year');
             $limit = 20;
+
+            $params = ['api_key' => $token, 'language' => 'es-ES', 'query' => $query];
+            if ($year) {
+                $params['primary_release_year'] = $year;
+            }
 
             // Escaneo de múltiples páginas para clásicos
             $pool = \Illuminate\Support\Facades\Http::pool(fn($pool) => [
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 1]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 2]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 3]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 4]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 5]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 6]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 7]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 8]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 9]),
-                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $query, 'page' => 10]),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 1])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 2])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 3])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 4])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 5])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 6])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 7])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 8])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 9])),
+                $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', array_merge($params, ['page' => 10])),
             ]);
 
             $allResults = [];
@@ -519,10 +534,13 @@ class MedioController extends Controller
                 $validWords = array_filter($words, fn($w) => strlen($w) >= 3);
 
                 if (!empty($validWords)) {
-                    $fallbackPool = \Illuminate\Support\Facades\Http::pool(function ($pool) use ($token, $validWords) {
+                    $fallbackPool = \Illuminate\Support\Facades\Http::pool(function ($pool) use ($token, $validWords, $params) {
                         $reqs = [];
                         foreach ($validWords as $w) {
-                            $reqs[] = $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', ['api_key' => $token, 'language' => 'es-ES', 'query' => $w, 'page' => 1]);
+                            $p = $params;
+                            $p['query'] = $w;
+                            $p['page'] = 1;
+                            $reqs[] = $pool->withOptions(['verify' => false])->get('https://api.themoviedb.org/3/search/movie', $p);
                         }
                         return $reqs;
                     });

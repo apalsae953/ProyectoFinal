@@ -103,7 +103,10 @@ function MoviesSeries() {
         setBuscando(true);
         setCargando(true);
         const endpoint = modo === 'movies' ? '/movies/search' : '/tv/search';
-        api.get(endpoint + '?query=' + termino + '&page=' + page)
+        let url = endpoint + '?query=' + termino + '&page=' + page;
+        if (filtros.year) url += '&year=' + filtros.year;
+        
+        api.get(url)
             .then((respuesta) => {
                 setPeliculas(respuesta.data.data);
                 setPaginaActual(respuesta.data.current_page);

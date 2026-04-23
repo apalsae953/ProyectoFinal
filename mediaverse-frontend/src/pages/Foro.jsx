@@ -34,6 +34,7 @@ function Respuesta({ r, depth, hiloId, onReply, isLogged, currentUserId }) {
   const [sending, setSending] = useState(false);
   const maxD = 3;
   const send = async () => {
+    if (sending) return;
     if (!text.trim()) return; setSending(true);
     try { await api.post('/threads/' + hiloId + '/replies', { contenido: text, padre_id: r.id }); setText(''); setShowBox(false); onReply(); } catch (e) { console.error(e); }
     setSending(false);
@@ -69,7 +70,7 @@ function Respuesta({ r, depth, hiloId, onReply, isLogged, currentUserId }) {
             <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
               <input value={text} onChange={e => setText(e.target.value)} placeholder="Tu respuesta..." onKeyDown={e => e.key === 'Enter' && send()}
                 style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid #333', backgroundColor: '#1a1a1a', color: 'white', fontSize: 13, outline: 'none' }} />
-              <button onClick={send} disabled={sending} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+              <button onClick={send} disabled={sending || !text.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', backgroundColor: (sending || !text.trim()) ? '#555' : '#e50914', color: 'white', fontWeight: 700, cursor: (sending || !text.trim()) ? 'not-allowed' : 'pointer', fontSize: 12 }}>
                 {sending ? <i className="fa-solid fa-spinner fa-spin"></i> : 'Enviar'}
               </button>
             </div>
@@ -161,6 +162,7 @@ function Foro() {
   }, [hiloActivo, showCrear]);
 
   const sendMainReply = async () => { 
+    if (sendingReply) return;
     if (!replyText.trim() || !hiloActivo) return; 
     setSendingReply(true); 
     try { 
@@ -212,6 +214,7 @@ function Foro() {
   const removeMedio = (idx) => { setMediosVinculados(prev => prev.filter((_, i) => i !== idx)); };
 
   const crearHilo = async () => {
+    if (creando) return;
     if (!formTitulo.trim() || !formContenido.trim()) { alerts.error('Completa el título y contenido'); return; }
     setCreando(true);
     try {
@@ -333,8 +336,8 @@ function Foro() {
                           onFocus={e => e.target.style.borderColor = '#e50914'} onBlur={e => e.target.style.borderColor = '#333'} />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
                           <button onClick={sendMainReply} disabled={sendingReply || !replyText.trim()}
-                            style={{ padding: '10px 24px', borderRadius: 10, border: 'none', backgroundColor: replyText.trim() ? '#e50914' : '#333', color: 'white', fontWeight: 700, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontSize: 14 }}>
-                            {sendingReply ? <i className="fa-solid fa-spinner fa-spin"></i> : <><i className="fa-solid fa-paper-plane" style={{ marginRight: 6 }}></i>Comentar</>}
+                            style={{ padding: '10px 24px', borderRadius: 10, border: 'none', backgroundColor: (sendingReply || !replyText.trim()) ? '#555' : '#e50914', color: 'white', fontWeight: 700, cursor: (sendingReply || !replyText.trim()) ? 'not-allowed' : 'pointer', fontSize: 14 }}>
+                            {sendingReply ? <><i className="fa-solid fa-spinner fa-spin"></i> Comentando...</> : <><i className="fa-solid fa-paper-plane" style={{ marginRight: 6 }}></i>Comentar</>}
                           </button>
                         </div>
                       </div>
@@ -515,8 +518,8 @@ function Foro() {
 
                 {/* PUBLICAR */}
                 <button onClick={crearHilo} disabled={creando}
-                  style={{ padding: '14px', borderRadius: 12, border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 900, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  {creando ? <i className="fa-solid fa-spinner fa-spin"></i> : <><i className="fa-solid fa-paper-plane"></i> Publicar Debate</>}
+                  style={{ padding: '14px', borderRadius: 12, border: 'none', backgroundColor: creando ? '#555' : '#e50914', color: 'white', fontWeight: 900, fontSize: 16, cursor: creando ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  {creando ? <><i className="fa-solid fa-spinner fa-spin"></i> Publicando...</> : <><i className="fa-solid fa-paper-plane"></i> Publicar Debate</>}
                 </button>
               </div>
             </motion.div>

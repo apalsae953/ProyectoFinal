@@ -21,6 +21,7 @@ function Rankings() {
     // Modal state
     const [showModal, setShowModal] = useState(false);
     const [nuevoRanking, setNuevoRanking] = useState({ titulo: '', descripcion: '', tipo: 'mixed', is_public: true });
+    const [isCreating, setIsCreating] = useState(false);
 
     const tipoText = {
         'movies': 'Películas',
@@ -139,6 +140,8 @@ function Rankings() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        if (isCreating) return;
+        setIsCreating(true);
         try {
             const res = await api.post('/rankings', nuevoRanking);
             alerts.success('Ranking creado exitosamente');
@@ -152,6 +155,8 @@ function Rankings() {
             }
         } catch (err) {
             alerts.error('No se pudo crear el ranking.');
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -413,7 +418,9 @@ function Rankings() {
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                                     <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #555', backgroundColor: 'transparent', color: 'white', cursor: 'pointer' }}>Cancelar</button>
-                                    <button type="submit" style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#e50914', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>Guardar Ranking</button>
+                                    <button type="submit" disabled={isCreating} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', backgroundColor: isCreating ? '#555' : '#e50914', color: 'white', fontWeight: 'bold', cursor: isCreating ? 'not-allowed' : 'pointer' }}>
+                                        {isCreating ? <><i className="fa-solid fa-spinner fa-spin"></i> Guardando...</> : 'Guardar Ranking'}
+                                    </button>
                                 </div>
                             </form>
                         </motion.div>
