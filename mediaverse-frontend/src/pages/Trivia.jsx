@@ -250,7 +250,7 @@ function Trivia() {
     // MENU DE SELECCION
     if (fase === 'menu') {
         return (
-            <div style={{ paddingBottom: '60px', maxWidth: '950px', margin: '0 auto' }}>
+            <div style={{ paddingBottom: '60px', maxWidth: '1150px', margin: '0 auto' }}>
                 {/* Cabecera */}
                 <div style={{ textAlign: 'center', marginBottom: '50px' }}>
                     <h1 className="hero-title" style={{ color: 'white', fontSize: '2.8rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: '10px' }}>
@@ -265,9 +265,8 @@ function Trivia() {
                 {/* Lista de cuestionarios */}
                 <div className="responsive-grid" style={{
                     padding: '0 20px',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
                     gap: '30px'
                 }}>
                     {cuestionarios.map((quiz, i) => {
@@ -282,7 +281,6 @@ function Trivia() {
                                 transition={{ delay: i * 0.15 }}
                                 onClick={() => iniciarQuiz(quiz)}
                                 style={{
-                                    flex: '0 1 410px', // Ajustado para que quepan 2 con el gap y el padding del container
                                     background: 'linear-gradient(145deg, #1a1a1a 0%, #111 100%)',
                                     borderRadius: '20px',
                                     padding: '30px',

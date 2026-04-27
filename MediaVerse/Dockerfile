@@ -38,5 +38,9 @@ RUN composer install --no-dev --optimize-autoloader
 # Expose port (Render sets it to 10000 by default)
 EXPOSE 10000
 
-# Start command
-CMD ["apache2-foreground"]
+# Copy and prepare startup script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+# Start command: migrate + seed trivia + apache
+CMD ["/start.sh"]
