@@ -323,12 +323,15 @@ class MedioController extends Controller
     {
         try {
             $token = config('services.tmdb.key');
-            $data = \Illuminate\Support\Facades\Cache::remember('latest_series_trending_day_v1', 1800, function () use ($token) {
-                // Para noticias "novedosas" usamos el TRENDING del DÍA, no de la semana
-                $response = Http::withoutVerifying()->get('https://api.themoviedb.org/3/trending/tv/day', [
-                    'api_key' => $token,
-                    'language' => 'es-ES'
-                ]);
+            $data = \Illuminate\Support\Facades\Cache::remember('latest_series_trending_week_v1', 1800, function () use ($token) {
+                // Para noticias "novedosas" usamos el TRENDING de la SEMANA para asegurar que siempre haya datos
+                $response = Http::withoutVerifying()
+                    ->timeout(10)
+                    ->retry(3, 200)
+                    ->get('https://api.themoviedb.org/3/trending/tv/week', [
+                        'api_key' => $token,
+                        'language' => 'es-ES'
+                    ]);
                 return $response->failed() ? ['results' => []] : $response->json();
             });
             if (!$data || !isset($data['results']))
@@ -1598,7 +1601,7 @@ class MedioController extends Controller
     {
         // Caché solo para los datos crudos de API externa (TMDB/IGDB) — 30 minutos
         // Los ratings de usuarios se calculan SIEMPRE frescos (consulta BD barata)
-        $raw = \Illuminate\Support\Facades\Cache::remember('dashboard_raw_api_v1', 1800, function () {
+        $raw = \Illuminate\Support\Facades\Cache::remember('dashboard_raw_api_v11', 1800, function () {
             $raw = [
                 'movies' => [],
                 'series' => [],
@@ -1610,9 +1613,12 @@ class MedioController extends Controller
             try {
                 $token = config('services.tmdb.key');
                 $data = \Illuminate\Support\Facades\Cache::remember('latest_movies_spain_v1', 1800, function () use ($token) {
-                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()->get('https://api.themoviedb.org/3/movie/now_playing', [
-                        'api_key' => $token, 'language' => 'es-ES', 'region' => 'ES'
-                    ]);
+                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                        ->timeout(10)
+                        ->retry(3, 200)
+                        ->get('https://api.themoviedb.org/3/movie/now_playing', [
+                            'api_key' => $token, 'language' => 'es-ES', 'region' => 'ES'
+                        ]);
                     return $response->failed() ? ['results' => []] : $response->json();
                 });
                 $results = $data['results'] ?? [];
@@ -1624,10 +1630,13 @@ class MedioController extends Controller
             // 2. Series (datos crudos TMDB, sin ratings locales)
             try {
                 $token = config('services.tmdb.key');
-                $data = \Illuminate\Support\Facades\Cache::remember('latest_series_trending_day_v1', 1800, function () use ($token) {
-                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()->get('https://api.themoviedb.org/3/trending/tv/day', [
-                        'api_key' => $token, 'language' => 'es-ES'
-                    ]);
+                $data = \Illuminate\Support\Facades\Cache::remember('latest_series_trending_week_v1', 1800, function () use ($token) {
+                    $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                        ->timeout(10)
+                        ->retry(3, 200)
+                        ->get('https://api.themoviedb.org/3/trending/tv/week', [
+                            'api_key' => $token, 'language' => 'es-ES'
+                        ]);
                     return $response->failed() ? ['results' => []] : $response->json();
                 });
                 $results = $data['results'] ?? [];
@@ -1649,6 +1658,8 @@ class MedioController extends Controller
                                   where first_release_date >= {$hace90Dias} & first_release_date <= {$manana} & cover != null & total_rating_count > 5;
                                   sort total_rating_count desc; limit 12;";
                         $response = \Illuminate\Support\Facades\Http::withoutVerifying()
+                            ->timeout(10)
+                            ->retry(3, 200)
                             ->withHeaders(['Client-ID' => config('services.igdb.client_id'), 'Authorization' => 'Bearer ' . $accessToken])
                             ->withBody($query, 'text/plain')->post('https://api.igdb.com/v4/games');
                         return $response->failed() ? [] : $response->json();
