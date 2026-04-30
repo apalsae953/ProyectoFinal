@@ -250,7 +250,7 @@ function Trivia() {
     // MENU DE SELECCION
     if (fase === 'menu') {
         return (
-            <div style={{ paddingBottom: '60px', maxWidth: '1150px', margin: '0 auto' }}>
+            <div style={{ paddingBottom: '60px', maxWidth: '1350px', margin: '0 auto' }}>
                 {/* Cabecera */}
                 <div style={{ textAlign: 'center', marginBottom: '50px' }}>
                     <h1 className="hero-title" style={{ color: 'white', fontSize: '2.8rem', fontWeight: 900, letterSpacing: '-1px', marginBottom: '10px' }}>

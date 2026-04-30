@@ -292,7 +292,7 @@ function Dashboard() {
                       whileHover={{ scale: 1.02, backgroundColor: '#222' }}
                       style={{ backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '15px', border: '1px solid #333' }}
                     >
-                      <div style={{ fontSize: '12px', color: '#e50914', fontWeight: 'bold', marginBottom: '5px' }}>TEMA CALIENTE</div>
+                      <div style={{ fontSize: '12px', color: '#e50914', fontWeight: 'bold', marginBottom: '5px' }}>Últimos Foros</div>
                       <h4 style={{ color: 'white', margin: '5px 0', fontSize: '1.1rem' }}>{thread.titulo}</h4>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
                         <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#333', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{thread.user?.name?.[0]}</div>
