@@ -262,12 +262,12 @@ function Trivia() {
                     </p>
                 </div>
 
-                {/* Lista de cuestionarios */}
-                <div className="responsive-grid" style={{
-                    padding: '0 20px',
+                <div style={{
+                    padding: '0 40px',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '30px'
+                    gap: '40px',
+                    margin: '0 auto'
                 }}>
                     {cuestionarios.map((quiz, i) => {
                         const catColor = CATEGORY_COLORS[quiz.categoria] || '#e50914';
@@ -281,26 +281,30 @@ function Trivia() {
                                 transition={{ delay: i * 0.15 }}
                                 onClick={() => iniciarQuiz(quiz)}
                                 style={{
-                                    background: 'linear-gradient(145deg, #1a1a1a 0%, #111 100%)',
-                                    borderRadius: '20px',
-                                    padding: '30px',
+                                    background: 'linear-gradient(165deg, rgba(30, 30, 30, 0.9) 0%, rgba(15, 15, 15, 0.95) 100%)',
+                                    backdropFilter: 'blur(10px)',
+                                    borderRadius: '24px',
+                                    padding: '40px',
                                     cursor: 'pointer',
-                                    border: '1px solid #222',
+                                    border: '1px solid rgba(255, 255, 255, 0.05)',
                                     position: 'relative',
                                     overflow: 'hidden',
-                                    transition: 'all 0.3s ease',
+                                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                                     display: 'flex',
-                                    flexDirection: 'column'
+                                    flexDirection: 'column',
+                                    minHeight: '480px',
+                                    width: '100%',
+                                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-8px)';
-                                    e.currentTarget.style.borderColor = catColor;
-                                    e.currentTarget.style.boxShadow = '0 15px 40px ' + catColor + '33';
+                                    e.currentTarget.style.transform = 'translateY(-12px) scale(1.02)';
+                                    e.currentTarget.style.borderColor = catColor + '55';
+                                    e.currentTarget.style.boxShadow = `0 20px 60px ${catColor}22`;
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.borderColor = '#222';
-                                    e.currentTarget.style.boxShadow = 'none';
+                                    e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                                    e.currentTarget.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
                                 }}
                             >
                                 {/* Le meto un efectito de glow de fondo */}
@@ -313,14 +317,24 @@ function Trivia() {
 
                                 {/* Icono grande */}
                                 <div style={{
-                                    fontSize: '50px', color: catColor, marginBottom: '20px',
-                                    filter: 'drop-shadow(0 0 15px ' + catColor + '55)'
+                                    width: '80px',
+                                    height: '80px',
+                                    backgroundColor: catColor + '15',
+                                    borderRadius: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '40px',
+                                    color: catColor,
+                                    marginBottom: '25px',
+                                    border: `1px solid ${catColor}33`,
+                                    boxShadow: `0 10px 20px ${catColor}11`
                                 }}>
                                     <i className={catIcon}></i>
                                 </div>
 
                                 {/* Titulo */}
-                                <h2 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 800, marginBottom: '10px' }}>
+                                <h2 style={{ color: 'white', fontSize: '1.8rem', fontWeight: 900, marginBottom: '15px', letterSpacing: '-0.5px' }}>
                                     {quiz.titulo}
                                 </h2>
 
@@ -336,8 +350,9 @@ function Trivia() {
                                 )}
 
                                 {/* Descripcion */}
-                                <p style={{ color: '#999', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '20px', minHeight: '45px' }}>
+                                <p style={{ color: '#aaa', fontSize: '1rem', lineHeight: 1.6, marginBottom: '25px', minHeight: '60px' }}>
                                     {quiz.descripcion}
+                                 Para probar tus límites y demostrar cuánto sabes realmente.
                                 </p>
 
                                 {/* Tags */}
@@ -351,26 +366,30 @@ function Trivia() {
                                     </span>
 
                                     <span style={{
-                                        backgroundColor: 'rgba(255,255,255,0.06)', color: '#aaa',
-                                        padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 600
+                                        backgroundColor: 'rgba(255,255,255,0.06)', color: '#eee',
+                                        padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
+                                        border: '1px solid rgba(255,255,255,0.1)'
                                     }}>
+                                        <i className="fa-regular fa-circle-question" style={{ marginRight: '6px' }}></i>
                                         10 preguntas
                                     </span>
                                 </div>
 
                                 {/* Boton Jugar */}
                                 <div style={{
-                                    marginTop: 'auto', paddingTop: '25px'
+                                    marginTop: 'auto', paddingTop: '30px'
                                 }}>
                                     <div style={{
-                                        padding: '12px', textAlign: 'center',
-                                        backgroundColor: catColor, borderRadius: '12px',
-                                        fontWeight: 800, fontSize: '1rem', color: 'white',
+                                        padding: '16px', textAlign: 'center',
+                                        background: `linear-gradient(45deg, ${catColor}, ${catColor}bb)`,
+                                        borderRadius: '16px',
+                                        fontWeight: 900, fontSize: '1.1rem', color: 'white',
                                         letterSpacing: '1px', textTransform: 'uppercase',
-                                        transition: 'all 0.2s'
+                                        transition: 'all 0.3s ease',
+                                        boxShadow: `0 8px 20px ${catColor}44`
                                     }}>
                                         <i className="fa-solid fa-play" style={{ marginRight: '10px' }}></i>
-                                        Jugar
+                                        Jugar Ahora
                                     </div>
                                 </div>
                             </motion.div>
