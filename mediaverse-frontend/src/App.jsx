@@ -23,6 +23,13 @@ import { alerts } from './utils/swal';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from './services/api';
 
+function ProtectedRoute({ children, isLogged }) {
+  if (!isLogged) {
+    return <Navigate to="/auth" replace />;
+  }
+  return children;
+}
+
 function MobileBottomNav({ isLogged }) {
   const location = useLocation();
   const path = location.pathname;
@@ -313,7 +320,6 @@ function App() {
                       <Link to="/ver-mas-tarde" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-clock"></i> Para más tarde</Link>
                       <Link to="/resenas" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-pen-to-square"></i> Mis Reseñas</Link>
                       <Link to="/yaVistos" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-eye"></i> Ya Vistos</Link>
-                      <Link to="/ajustes" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-gear"></i> Ajustes</Link>
 
                       <hr style={{ borderColor: '#333', width: '100%', margin: '5px 0' }} />
                       <button onClick={handleLogout} style={{ background: 'none', border: 'none', textAlign: 'left', color: '#e50914', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer', padding: 0, transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-right-from-bracket"></i> Cerrar Sesión</button>
@@ -323,6 +329,8 @@ function App() {
                       <Link to="/auth" onClick={() => setMenuAbierto(false)} style={{ color: '#e50914', textDecoration: 'none', fontSize: '16px', fontWeight: 'bold', transition: 'padding-left 0.3s' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-door-open"></i> Iniciar Sesión / Registro</Link>
                     </>
                   )}
+                  
+                  <Link to="/ajustes" onClick={() => setMenuAbierto(false)} style={{ color: '#ccc', textDecoration: 'none', fontSize: '16px', transition: 'padding-left 0.3s', marginTop: '10px' }} onMouseEnter={(e) => e.target.style.paddingLeft = '10px'} onMouseLeave={(e) => e.target.style.paddingLeft = '0'}><i className="fa-solid fa-gear"></i> Ajustes</Link>
                 </div>
               )}
             </div>
@@ -342,13 +350,13 @@ function App() {
             <Route path="/detalle/:tipo/:id" element={<Detalle />} />
             <Route path="/actor/:id" element={<Actor />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/perfil" element={<Profile />} />
+            <Route path="/perfil" element={<ProtectedRoute isLogged={isLogged}><Profile /></ProtectedRoute>} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
-            <Route path="/ver-mas-tarde" element={<VerMasTarde />} />
+            <Route path="/ver-mas-tarde" element={<ProtectedRoute isLogged={isLogged}><VerMasTarde /></ProtectedRoute>} />
             <Route path="/rankings" element={<Rankings />} />
             <Route path="/rankings/:id" element={<RankingDetail />} />
-            <Route path="/resenas" element={<MisResenas />} />
-            <Route path="/yaVistos" element={<YaVistos />} />
+            <Route path="/resenas" element={<ProtectedRoute isLogged={isLogged}><MisResenas /></ProtectedRoute>} />
+            <Route path="/yaVistos" element={<ProtectedRoute isLogged={isLogged}><YaVistos /></ProtectedRoute>} />
             <Route path="/Anime" element={<Anime />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/ajustes" element={<Ajustes />} />
