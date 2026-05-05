@@ -364,13 +364,6 @@ function Trivia() {
                                     }}>
                                         {quiz.categoria.replace('_', ' ')}
                                     </span>
-
-                                    <span style={{
-                                        backgroundColor: 'rgba(255,255,255,0.06)', color: '#eee',
-                                        padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
-                                        border: '1px solid rgba(255,255,255,0.1)'
-                                    }}>
-                                    </span>
                                 </div>
 
                                 {/* Boton Jugar */}
