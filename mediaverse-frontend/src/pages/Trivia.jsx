@@ -352,7 +352,7 @@ function Trivia() {
                                 {/* Descripcion */}
                                 <p style={{ color: '#aaa', fontSize: '1rem', lineHeight: 1.6, marginBottom: '25px', minHeight: '60px' }}>
                                     {quiz.descripcion}
-                                 Para probar tus límites y demostrar cuánto sabes realmente.
+                                    Para probar tus límites y demostrar cuánto sabes realmente.
                                 </p>
 
                                 {/* Tags */}
@@ -370,8 +370,6 @@ function Trivia() {
                                         padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: 600,
                                         border: '1px solid rgba(255,255,255,0.1)'
                                     }}>
-                                        <i className="fa-regular fa-circle-question" style={{ marginRight: '6px' }}></i>
-                                        10 preguntas
                                     </span>
                                 </div>
 
